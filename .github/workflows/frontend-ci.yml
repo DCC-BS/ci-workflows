@@ -1,67 +1,65 @@
 name: Frontend CI (Reusable)
 
 on:
-  workflow_call:
-    inputs:
-      node_version:
-        required: false
-        type: string
-        default: '24.x'
-      working_directory:
-        required: false
-        type: string
-        default: '.'
-      run_biome:
-        required: false
-        type: string
-        default: 'true'
-      run_playwright:
-        required: false
-        type: string
-        default: 'true'
-      install_method:
-        required: false
-        type: string
-        default: 'bun'
-      install_command:
-        required: false
-        type: string
-        default: ''
-      build_command:
-        required: false
-        type: string
-        default: 'bun run build'
-      test_command:
-        required: false
-        type: string
-        default: 'bunx playwright test'
-      artifact_name:
-        required: false
-        type: string
-        default: 'playwright-report'
-      artifact_retention_days:
-        required: false
-        type: number
-        default: 30
+    workflow_call:
+        inputs:
+            node_version:
+                required: false
+                type: string
+                default: "24.x"
+            working_directory:
+                required: false
+                type: string
+                default: "."
+            run_biome:
+                required: false
+                type: string
+                default: "true"
+            run_playwright:
+                required: false
+                type: string
+                default: "true"
+            install_method:
+                required: false
+                type: string
+                default: "bun"
+            install_command:
+                required: false
+                type: string
+                default: ""
+            build_command:
+                required: false
+                type: string
+                default: "bun run build"
+            test_command:
+                required: false
+                type: string
+                default: "bunx playwright test"
+            artifact_name:
+                required: false
+                type: string
+                default: "playwright-report"
+            artifact_retention_days:
+                required: false
+                type: number
+                default: 30
 
 jobs:
-  build-test:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Build, Lint, and Test
-        uses: ./actions/node-bun-biome-playwright
-        with:
-          node_version: ${{ inputs.node_version }}
-          working_directory: ${{ inputs.working_directory }}
-          run_biome: ${{ inputs.run_biome }}
-          run_playwright: ${{ inputs.run_playwright }}
-          install_method: ${{ inputs.install_method }}
-          install_command: ${{ inputs.install_command }}
-          build_command: ${{ inputs.build_command }}
-          test_command: ${{ inputs.test_command }}
-          artifact_name: ${{ inputs.artifact_name }}
-          artifact_retention_days: ${{ inputs.artifact_retention_days }}
-
-
+    build-test:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        steps:
+            - name: Build, Lint, and Test
+              uses: ./actions/node-bun-biome-playwright
+              with:
+                  node_version: ${{ inputs.node_version }}
+                  working_directory: ${{ inputs.working_directory }}
+                  run_biome: ${{ inputs.run_biome }}
+                  run_playwright: ${{ inputs.run_playwright }}
+                  install_method: ${{ inputs.install_method }}
+                  install_command: ${{ inputs.install_command }}
+                  build_command: ${{ inputs.build_command }}
+                  test_command: ${{ inputs.test_command }}
+                  artifact_name: ${{ inputs.artifact_name }}
+                  artifact_retention_days: ${{ inputs.artifact_retention_days }}
