@@ -8,7 +8,9 @@ Reusable GitHub Actions (workflows + composite actions) to standardize CI for No
   - `node-bun-biome-playwright/` — Composite action to checkout, set up Node + Bun, run build, Biome, Playwright, and upload report.
 - `.github/workflows/`
   - `frontend-ci.yml` — Reusable end‑to‑end Build & Test workflow (calls `node-bun-biome-playwright`).
+  - `python-backend-ci.yml` — Reusable uv-based backend checks + matrix runner.
   - `publish-docker.yml` — Reusable Docker publish workflow for GHCR (calls `bump-version`).
+  - `npm-publish.yml` — Reusable workflow to bump, build, and publish npm packages.
 
 ## Usage
 
@@ -114,6 +116,40 @@ jobs:
 ### Bump Version Action
 
 `actions/bump-version` now supports both Node (Nuxt) and Python projects. Set the `project_type` input to `node` (default) or `python`; when `python`, the action uses `uv version --bump` and commits `pyproject.toml`. Consumers can also override the `uv_version` input if they require a specific release.
+
+### Publish Package to NPM
+
+Reusable workflow to build, version, and publish a package using Bun + npm tooling. Requires a secret `NPM_TOKEN` with publish permissions for the configured registry.
+
+- `version_type` — semantic bump applied via `npm version` (default `patch`)
+- `node_version`, `registry_url`, `bun_version` — runtime setup knobs
+- `install_command`, `build_command`, `prepack_command`, `publish_command` — override/disable individual lifecycle steps by setting the value you need (use `''` to skip)
+
+Example usage:
+
+```yaml
+name: Publish Package
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: Version increment type
+        type: choice
+        options: [ patch, minor, major ]
+        default: patch
+
+jobs:
+  publish:
+    uses: DCC-BS/ci-workflows/.github/workflows/npm-publish.yml@v1
+    secrets: inherit        # make sure NPM_TOKEN is defined for the caller repo
+    with:
+      version_type: ${{ inputs.version_type }}
+      registry_url: https://npm.pkg.github.com
+      install_command: bun install
+      build_command: bun generate
+      prepack_command: bun run prepack
+      publish_command: bun publish --access public
+```
 
 ## Versioning
 - Tagged releases follow SemVer (e.g., `v1.0.0`).
