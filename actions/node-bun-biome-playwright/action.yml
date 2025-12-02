@@ -1,0 +1,130 @@
+name: "Node + Bun + Biome + Playwright"
+description: "Checkout, setup Node & Bun, install deps, build, run Biome and Playwright, upload report"
+inputs:
+  node_version:
+    description: "Node.js version (semver)"
+    required: false
+    default: "24.x"
+  working_directory:
+    description: "Path to the project root"
+    required: false
+    default: "."
+  run_biome:
+    description: "Run Biome lint/format check"
+    required: false
+    default: "true"
+  run_playwright:
+    description: "Run Playwright tests"
+    required: false
+    default: "true"
+  install_method:
+    description: "Dependency manager to use: bun | npm | pnpm | yarn"
+    required: false
+    default: "bun"
+  install_command:
+    description: "Optional override for install command"
+    required: false
+    default: ""
+  build_command:
+    description: "Command to build the project"
+    required: false
+    default: "bun run build"
+  test_command:
+    description: "Command to run tests"
+    required: false
+    default: "bunx playwright test"
+  artifact_name:
+    description: "Name for Playwright report artifact"
+    required: false
+    default: "playwright-report"
+  artifact_retention_days:
+    description: "Retention days for artifact"
+    required: false
+    default: "30"
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node_version }}
+        registry-url: https://npm.pkg.github.com
+
+    - name: Install Bun
+      shell: bash
+      run: npm install -g bun
+
+    - name: Resolve install command
+      id: cmds
+      shell: bash
+      run: |
+        set -e
+        if [[ -n "${{ inputs.install_command }}" ]]; then
+          echo "install_cmd=${{ inputs.install_command }}" >> "$GITHUB_OUTPUT"
+        else
+          case "${{ inputs.install_method }}" in
+            bun)  echo "install_cmd=bun install" >> "$GITHUB_OUTPUT" ;;
+            npm)  echo "install_cmd=npm ci" >> "$GITHUB_OUTPUT" ;;
+            pnpm) echo "install_cmd=pnpm i --frozen-lockfile" >> "$GITHUB_OUTPUT" ;;
+            yarn) echo "install_cmd=yarn --frozen-lockfile" >> "$GITHUB_OUTPUT" ;;
+            *)    echo "Unknown install_method" >&2; exit 1 ;;
+          esac
+        fi
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      env:
+        NODE_AUTH_TOKEN: ${{ github.token }}
+      run: |
+        set -e
+        echo "Running: ${{ steps.cmds.outputs.install_cmd }}"
+        eval "${{ steps.cmds.outputs.install_cmd }}"
+
+    - name: Build
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: ${{ inputs.build_command }}
+
+    - name: Setup Biome
+      if: ${{ inputs.run_biome == 'true' }}
+      uses: biomejs/setup-biome@v2
+      with:
+        version: latest
+
+    - name: Biome check
+      if: ${{ inputs.run_biome == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: biome ci .
+
+    - name: Install Playwright Browsers
+      if: ${{ inputs.run_playwright == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: bunx playwright install --with-deps
+
+    - name: Run Playwright tests
+      if: ${{ inputs.run_playwright == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: ${{ inputs.test_command }}
+
+    - name: Summarize Playwright report
+      if: ${{ always() && inputs.run_playwright == 'true' }}
+      uses: daun/playwright-report-summary@v3
+      with:
+        report-file: results.json
+
+    - name: Upload Playwright report
+      if: ${{ !cancelled() && inputs.run_playwright == 'true' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact_name }}
+        path: ${{ inputs.working_directory }}/playwright-report/
+        retention-days: ${{ inputs.artifact_retention_days }}
+
+

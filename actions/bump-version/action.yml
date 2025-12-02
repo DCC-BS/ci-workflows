@@ -1,0 +1,46 @@
+name: "Bump version (npm) and tag"
+description: "Bump package.json version (major/minor/patch), commit, tag, and push; exposes new_version and tag_name outputs."
+inputs:
+  release_type:
+    description: "One of: major | minor | patch"
+    required: true
+  git_user_name:
+    description: "Git user.name for commit"
+    required: false
+    default: "GitHub Action"
+  git_user_email:
+    description: "Git user.email for commit"
+    required: false
+    default: "action@github.com"
+outputs:
+  new_version:
+    description: "Bumped version read from package.json"
+    value: ${{ steps.bump.outputs.new_version }}
+  tag_name:
+    description: "Created tag name (e.g., v1.2.3)"
+    value: ${{ steps.bump.outputs.tag_name }}
+runs:
+  using: "composite"
+  steps:
+    - name: Configure Git identity
+      shell: bash
+      run: |
+        git config --local user.name "${{ inputs.git_user_name }}"
+        git config --local user.email "${{ inputs.git_user_email }}"
+
+    - name: Bump, tag, and push
+      id: bump
+      shell: bash
+      run: |
+        chmod +x "${{ github.action_path }}/script.sh"
+        OUTPUT="$("${{ github.action_path }}/script.sh" "${{ inputs.release_type }}")"
+        echo "$OUTPUT"
+        NEW_VERSION="$(echo "$OUTPUT" | sed 's/\r$//' | grep -E '^new_version=' | cut -d'=' -f2-)"
+        TAG_NAME="$(echo "$OUTPUT" | sed 's/\r$//' | grep -E '^tag_name=' | cut -d'=' -f2-)"
+        # Fallback parsing if the line endings aren't as expected
+        if [ -z "$TAG_NAME" ]; then
+          TAG_NAME="$(echo "$OUTPUT" | grep -E '^tag_name=' | cut -d'=' -f2-)"
+        fi
+        echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+        echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
+
