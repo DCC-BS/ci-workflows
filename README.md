@@ -40,9 +40,44 @@ jobs:
       artifact_retention_days: 30
 ```
 
+### Python Backend CI
+
+Reusable workflow for Python repositories that use `uv` to manage dependencies. It runs quality checks and, optionally, a Python-version matrix for tests and type checking.
+
+- `python_versions` — JSON array passed to the test matrix (default `["3.12"]`)
+- `quality_python_version` — Python version for the quality job (default `3.12`)
+- `check_command` — command executed in the quality job (default `make check`)
+- `test_command` — optional command; step runs only when set
+- `typecheck_command` — optional command; step runs only when set
+- `uv_version` and `working_directory` allow further customization
+
+Example usage:
+
+```yaml
+name: Main
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    types: [ opened, synchronize, reopened, ready_for_review ]
+
+jobs:
+  backend-ci:
+    uses: DCC-BS/ci-workflows/.github/workflows/python-backend-ci.yml@v1
+    with:
+      python_versions: '["3.10","3.11","3.12","3.13"]'
+      quality_python_version: "3.12"
+      check_command: "make check"
+      test_command: "uv run pytest tests"
+      typecheck_command: "uv run basedpyright"
+```
+
 ### Publish Docker Image (GHCR)
 
 Requires the caller workflow to inherit `secrets` so the `GITHUB_TOKEN` is available to the called workflow for tagging and pushing.
+
+- `version_project_type` — pass `python` to bump `pyproject.toml` via `uv` (default `node`)
+- `version_uv_version` — override the `uv` release used when `version_project_type == python`
 
 ```yaml
 name: Build and Publish Docker Image
@@ -66,6 +101,8 @@ jobs:
     secrets: inherit
     with:
       release_type: ${{ inputs.version_bump }}   # major|minor|patch
+      version_project_type: "python"             # or "node"
+      version_uv_version: "0.9.14"
       registry: ghcr.io
       image_name: ghcr.io/${{ github.repository }}
       context: .
@@ -73,6 +110,10 @@ jobs:
       platforms: linux/amd64,linux/arm64
       push: true
 ```
+
+### Bump Version Action
+
+`actions/bump-version` now supports both Node (Nuxt) and Python projects. Set the `project_type` input to `node` (default) or `python`; when `python`, the action uses `uv version --bump` and commits `pyproject.toml`. Consumers can also override the `uv_version` input if they require a specific release.
 
 ## Versioning
 - Tagged releases follow SemVer (e.g., `v1.0.0`).

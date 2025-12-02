@@ -2,25 +2,47 @@
 set -euo pipefail
 
 RELEASE_TYPE="${1:-}"
+PROJECT_TYPE="${2:-node}"
+
 if [[ -z "${RELEASE_TYPE}" ]]; then
   echo "Error: Version bump type not specified" >&2
-  echo "Usage: script.sh <major|minor|patch>" >&2
+  echo "Usage: script.sh <major|minor|patch> [node|python]" >&2
   exit 1
 fi
 
-# Ensure we are in a git repo with package.json
-if [[ ! -f package.json ]]; then
-  echo "Error: package.json not found in current directory: $(pwd)" >&2
-  exit 1
-fi
+case "${PROJECT_TYPE}" in
+  node)
+    if [[ ! -f package.json ]]; then
+      echo "Error: package.json not found in current directory: $(pwd)" >&2
+      exit 1
+    fi
 
-# Bump version in package.json without auto-tagging
-npm version "${RELEASE_TYPE}" --no-git-tag-version
-NEW_VERSION="$(jq -r .version package.json)"
+    npm version "${RELEASE_TYPE}" --no-git-tag-version
+    NEW_VERSION="$(jq -r .version package.json)"
+    git add package.json
+    ;;
+  python)
+    if [[ ! -f pyproject.toml ]]; then
+      echo "Error: pyproject.toml not found in current directory: $(pwd)" >&2
+      exit 1
+    fi
+
+    uv version --bump "${RELEASE_TYPE}"
+    NEW_VERSION="$(uv version --short)"
+    if [[ -z "${NEW_VERSION}" ]]; then
+      echo "Error: unable to read new version from uv" >&2
+      exit 1
+    fi
+    git add pyproject.toml
+    ;;
+  *)
+    echo "Error: unsupported project type '${PROJECT_TYPE}'. Use node or python." >&2
+    exit 1
+    ;;
+esac
+
 echo "New version: ${NEW_VERSION}"
 
-# Commit, tag and push
-git add package.json
 git commit -m "chore: bump version to ${NEW_VERSION}"
 git tag "v${NEW_VERSION}"
 git push origin HEAD --tags

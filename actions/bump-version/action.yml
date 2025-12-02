@@ -1,5 +1,5 @@
-name: "Bump version (npm) and tag"
-description: "Bump package.json version (major/minor/patch), commit, tag, and push; exposes new_version and tag_name outputs."
+name: "Bump project version and tag"
+description: "Bump Node (package.json) or Python (pyproject.toml) versions, commit, tag, and push; exposes new_version and tag_name outputs."
 inputs:
   release_type:
     description: "One of: major | minor | patch"
@@ -12,6 +12,14 @@ inputs:
     description: "Git user.email for commit"
     required: false
     default: "action@github.com"
+  project_type:
+    description: "Project type to bump: node | python"
+    required: true
+    default: "node"
+  uv_version:
+    description: "uv version to install when project_type == python"
+    required: false
+    default: "0.9.14"
 outputs:
   new_version:
     description: "Bumped version read from package.json"
@@ -28,12 +36,18 @@ runs:
         git config --local user.name "${{ inputs.git_user_name }}"
         git config --local user.email "${{ inputs.git_user_email }}"
 
+    - name: Install uv (python projects)
+      if: ${{ inputs.project_type == 'python' }}
+      uses: astral-sh/setup-uv@v7
+      with:
+        version: ${{ inputs.uv_version }}
+
     - name: Bump, tag, and push
       id: bump
       shell: bash
       run: |
         chmod +x "${{ github.action_path }}/script.sh"
-        OUTPUT="$("${{ github.action_path }}/script.sh" "${{ inputs.release_type }}")"
+        OUTPUT="$("${{ github.action_path }}/script.sh" "${{ inputs.release_type }}" "${{ inputs.project_type }}")"
         echo "$OUTPUT"
         NEW_VERSION="$(echo "$OUTPUT" | sed 's/\r$//' | grep -E '^new_version=' | cut -d'=' -f2-)"
         TAG_NAME="$(echo "$OUTPUT" | sed 's/\r$//' | grep -E '^tag_name=' | cut -d'=' -f2-)"
@@ -43,4 +57,3 @@ runs:
         fi
         echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
         echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
-
