@@ -73,7 +73,7 @@ jobs:
 
             - name: Bump version
               id: version_bump
-              uses: ./actions/bump-version
+              uses: DCC-BS/ci-workflows/actions/bump-version@v1
               with:
                   release_type: ${{ inputs.release_type }}
                   project_type: ${{ inputs.version_project_type }}
