@@ -33,6 +33,12 @@ case "${PROJECT_TYPE}" in
       echo "Error: unable to read new version from uv" >&2
       exit 1
     fi
+    if [[ -f uv.lock ]]; then
+      uv lock
+      git add uv.lock
+    else
+      echo "Warning: uv.lock not found; skipping lock update" >&2
+    fi
     git add pyproject.toml
     ;;
   *)
