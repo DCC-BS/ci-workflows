@@ -1,5 +1,5 @@
-name: "Bump project version and tag"
-description: "Bump Node (package.json) or Python (pyproject.toml) versions, commit, tag, and push; exposes new_version and tag_name outputs."
+name: "Bump project version"
+description: "Bump Node (package.json) or Python (pyproject.toml) versions, stage the change, and expose new_version and tag_name outputs."
 inputs:
   release_type:
     description: "One of: major | minor | patch"

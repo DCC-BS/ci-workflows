@@ -110,6 +110,20 @@ jobs:
                   cache-to: type=gha,mode=max
                   platforms: ${{ inputs.platforms }}
 
+            - name: Commit, tag, and push version bump
+              env:
+                  NEW_VERSION: ${{ steps.version_bump.outputs.new_version }}
+                  TAG_NAME: ${{ steps.version_bump.outputs.tag_name }}
+              run: |
+                  if git diff --staged --quiet; then
+                      echo "No staged version changes to commit."
+                      exit 0
+                  fi
+                  git commit -m "chore: bump version to ${NEW_VERSION}"
+                  git tag "${TAG_NAME}"
+                  git push origin HEAD
+                  git push origin "${TAG_NAME}"
+
             - name: Summary
               shell: bash
               run: |

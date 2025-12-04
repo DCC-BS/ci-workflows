@@ -43,10 +43,6 @@ esac
 
 echo "New version: ${NEW_VERSION}"
 
-git commit -m "chore: bump version to ${NEW_VERSION}"
-git tag "v${NEW_VERSION}"
-git push origin HEAD --tags
-
 # Emit outputs
 echo "new_version=${NEW_VERSION}"
 echo "tag_name=v${NEW_VERSION}"
