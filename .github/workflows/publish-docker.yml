@@ -1,143 +1,143 @@
 name: Publish Docker to GHCR (Reusable)
 
 on:
-    workflow_call:
-        inputs:
-            release_type:
-                description: "Version bump: major | minor | patch"
-                required: true
-                type: string
-            version_project_type:
-                description: "Project type for version bump (node | python)"
-                required: false
-                type: string
-                default: "node"
-            version_uv_version:
-                description: "uv version to install when project type is python"
-                required: false
-                type: string
-                default: "0.9.14"
-            registry:
-                description: "Registry hostname"
-                required: false
-                type: string
-                default: "ghcr.io"
-            image_name:
-                description: "Full image name (e.g., ghcr.io/owner/repo)"
-                required: false
-                type: string
-                default: "ghcr.io/${{ github.repository }}"
-            context:
-                required: false
-                type: string
-                default: "."
-            dockerfile:
-                required: false
-                type: string
-                default: "./Dockerfile"
-            platforms:
-                required: false
-                type: string
-                default: "linux/amd64"
-            push:
-                required: false
-                type: boolean
-                default: true
-        outputs:
-            new_version:
-                description: "Bumped version"
-                value: ${{ jobs.build-and-publish.outputs.new_version }}
-            tag_name:
-                description: "Created tag"
-                value: ${{ jobs.build-and-publish.outputs.tag_name }}
-            tags:
-                description: "Docker tags used"
-                value: ${{ jobs.build-and-publish.outputs.tags }}
+  workflow_call:
+    inputs:
+      release_type:
+        description: "Version bump: major | minor | patch"
+        required: true
+        type: string
+      version_project_type:
+        description: "Project type for version bump (node | python)"
+        required: false
+        type: string
+        default: "node"
+      version_uv_version:
+        description: "uv version to install when project type is python"
+        required: false
+        type: string
+        default: "0.9.14"
+      registry:
+        description: "Registry hostname"
+        required: false
+        type: string
+        default: "ghcr.io"
+      image_name:
+        description: "Full image name (e.g., ghcr.io/owner/repo)"
+        required: false
+        type: string
+        default: "ghcr.io/${{ github.repository }}"
+      context:
+        required: false
+        type: string
+        default: "."
+      dockerfile:
+        required: false
+        type: string
+        default: "./Dockerfile"
+      platforms:
+        required: false
+        type: string
+        default: "linux/amd64"
+      push:
+        required: false
+        type: boolean
+        default: true
+    outputs:
+      new_version:
+        description: "Bumped version"
+        value: ${{ jobs.build-and-publish.outputs.new_version }}
+      tag_name:
+        description: "Created tag"
+        value: ${{ jobs.build-and-publish.outputs.tag_name }}
+      tags:
+        description: "Docker tags used"
+        value: ${{ jobs.build-and-publish.outputs.tags }}
 
 jobs:
-    build-and-publish:
-        runs-on: ubuntu-latest
-        permissions:
-            contents: write
-            packages: write
-        outputs:
-            new_version: ${{ steps.version_bump.outputs.new_version }}
-            tag_name: ${{ steps.version_bump.outputs.tag_name }}
-            tags: ${{ steps.meta.outputs.tags }}
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
-              with:
-                  fetch-depth: 0
-                  token: ${{ github.token }}
+  build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    outputs:
+      new_version: ${{ steps.version_bump.outputs.new_version }}
+      tag_name: ${{ steps.version_bump.outputs.tag_name }}
+      tags: ${{ steps.meta.outputs.tags }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ github.token }}
 
-            - name: Bump version
-              id: version_bump
-              uses: DCC-BS/ci-workflows/actions/bump-version@v1
-              with:
-                  release_type: ${{ inputs.release_type }}
-                  project_type: ${{ inputs.version_project_type }}
-                  uv_version: ${{ inputs.version_uv_version }}
+      - name: Bump version
+        id: version_bump
+        uses: DCC-BS/ci-workflows/actions/bump-version@v1
+        with:
+          release_type: ${{ inputs.release_type }}
+          project_type: ${{ inputs.version_project_type }}
+          uv_version: ${{ inputs.version_uv_version }}
 
-            - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-            - name: Log in to GHCR
-              uses: docker/login-action@v3
-              with:
-                  registry: ${{ inputs.registry }}
-                  username: ${{ github.actor }}
-                  password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ inputs.registry }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Extract metadata (tags, labels)
-              id: meta
-              uses: docker/metadata-action@v5
-              with:
-                  images: ${{ inputs.image_name }}
-                  tags: |
-                      type=raw,value=${{ steps.version_bump.outputs.new_version }}
-                      type=raw,value=latest
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ inputs.image_name }}
+          tags: |
+            type=raw,value=${{ steps.version_bump.outputs.new_version }}
+            type=raw,value=latest
 
-            - name: Build and push Docker image
-              uses: docker/build-push-action@v6
-              with:
-                  context: ${{ inputs.context }}
-                  file: ${{ inputs.dockerfile }}
-                  push: ${{ inputs.push }}
-                  tags: ${{ steps.meta.outputs.tags }}
-                  labels: ${{ steps.meta.outputs.labels }}
-                  cache-from: type=gha
-                  cache-to: type=gha,mode=max
-                  platforms: ${{ inputs.platforms }}
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ inputs.context }}
+          file: ${{ inputs.dockerfile }}
+          push: ${{ inputs.push }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: ${{ inputs.platforms }}
 
-            - name: Commit, tag, and push version bump
-              env:
-                  NEW_VERSION: ${{ steps.version_bump.outputs.new_version }}
-                  TAG_NAME: ${{ steps.version_bump.outputs.tag_name }}
-              run: |
-                  if git diff --staged --quiet; then
-                      echo "No staged version changes to commit."
-                      exit 0
-                  fi
-                  git commit -m "chore: bump version to ${NEW_VERSION}"
-                  git tag "${TAG_NAME}"
-                  git push origin HEAD
-                  git push origin "${TAG_NAME}"
+      - name: Commit, tag, and push version bump
+        env:
+          NEW_VERSION: ${{ steps.version_bump.outputs.new_version }}
+          TAG_NAME: ${{ steps.version_bump.outputs.tag_name }}
+        run: |
+          if git diff --staged --quiet; then
+              echo "No staged version changes to commit."
+              exit 0
+          fi
+          git commit -m "chore: bump version to ${NEW_VERSION}"
+          git tag "${TAG_NAME}"
+          git push origin HEAD
+          git push origin "${TAG_NAME}"
 
-            - name: Summary
-              shell: bash
-              run: |
-                  {
-                    echo "## ✅ Build and Publish Complete!"
-                    echo
-                    echo "**Version:** \`${{ steps.version_bump.outputs.new_version }}\`"
-                    echo "**Tag:** \`${{ steps.version_bump.outputs.tag_name }}\`"
-                    echo "**Docker Images:**"
-                    echo "- \`${{ inputs.image_name }}:${{ steps.version_bump.outputs.new_version }}\`"
-                    echo "- \`${{ inputs.image_name }}:latest\`"
-                    echo
-                    echo "**Pull Command:**"
-                    echo '```bash'
-                    echo "docker pull ${{ inputs.image_name }}:${{ steps.version_bump.outputs.new_version }}"
-                    echo '```'
-                  } >> "$GITHUB_STEP_SUMMARY"
+      - name: Summary
+        shell: bash
+        run: |
+          {
+            echo "## ✅ Build and Publish Complete!"
+            echo
+            echo "**Version:** \`${{ steps.version_bump.outputs.new_version }}\`"
+            echo "**Tag:** \`${{ steps.version_bump.outputs.tag_name }}\`"
+            echo "**Docker Images:**"
+            echo "- \`${{ inputs.image_name }}:${{ steps.version_bump.outputs.new_version }}\`"
+            echo "- \`${{ inputs.image_name }}:latest\`"
+            echo
+            echo "**Pull Command:**"
+            echo '```bash'
+            echo "docker pull ${{ inputs.image_name }}:${{ steps.version_bump.outputs.new_version }}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

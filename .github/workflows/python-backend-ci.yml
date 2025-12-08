@@ -1,101 +1,101 @@
 name: Python Backend CI (Reusable)
 
 on:
-    workflow_call:
-        inputs:
-            python_versions:
-                description: JSON array of Python versions for the test matrix
-                required: false
-                type: string
-                default: '["3.12"]'
-            check_command:
-                description: Command to run project quality checks
-                required: false
-                type: string
-                default: "make check"
-            quality_python_version:
-                description: Python version used for quality job
-                required: false
-                type: string
-                default: "3.12"
-            test_command:
-                description: Optional command to run tests
-                required: false
-                type: string
-                default: ""
-            typecheck_command:
-                description: Optional command to run type checking
-                required: false
-                type: string
-                default: ""
-            uv_version:
-                description: uv version to install
-                required: false
-                type: string
-                default: "0.6.2"
-            working_directory:
-                description: Project directory
-                required: false
-                type: string
-                default: "."
+  workflow_call:
+    inputs:
+      python_versions:
+        description: JSON array of Python versions for the test matrix
+        required: false
+        type: string
+        default: '["3.12"]'
+      check_command:
+        description: Command to run project quality checks
+        required: false
+        type: string
+        default: "make check"
+      quality_python_version:
+        description: Python version used for quality job
+        required: false
+        type: string
+        default: "3.12"
+      test_command:
+        description: Optional command to run tests
+        required: false
+        type: string
+        default: ""
+      typecheck_command:
+        description: Optional command to run type checking
+        required: false
+        type: string
+        default: ""
+      uv_version:
+        description: uv version to install
+        required: false
+        type: string
+        default: "0.6.2"
+      working_directory:
+        description: Project directory
+        required: false
+        type: string
+        default: "."
 
 jobs:
-    quality:
-        name: Quality Checks
-        runs-on: ubuntu-latest
-        permissions:
-            contents: read
-        defaults:
-            run:
-                shell: bash
-                working-directory: ${{ inputs.working_directory }}
-        steps:
-            - name: Check out
-              uses: actions/checkout@v4
+  quality:
+    name: Quality Checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ inputs.working_directory }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
 
-            - uses: actions/cache@v4
-              with:
-                  path: ~/.cache/pre-commit
-                  key: pre-commit-${{ hashFiles(format('{0}/.pre-commit-config.yaml', inputs.working_directory)) }}
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ hashFiles(format('{0}/.pre-commit-config.yaml', inputs.working_directory)) }}
 
-            - name: Set up the environment
-              uses: DCC-BS/ci-workflows/actions/setup-python-env@v1
-              with:
-                  python-version: ${{ inputs.quality_python_version }}
-                  uv-version: ${{ inputs.uv_version }}
-                  working-directory: ${{ inputs.working_directory }}
+      - name: Set up the environment
+        uses: DCC-BS/ci-workflows/actions/setup-python-env@v1
+        with:
+          python-version: ${{ inputs.quality_python_version }}
+          uv-version: ${{ inputs.uv_version }}
+          working-directory: ${{ inputs.working_directory }}
 
-            - name: Run quality checks
-              run: ${{ inputs.check_command }}
+      - name: Run quality checks
+        run: ${{ inputs.check_command }}
 
-    tests-and-type-check:
-        name: Tests & Type Checks
-        runs-on: ubuntu-latest
-        needs: quality
-        if: ${{ inputs.test_command != '' || inputs.typecheck_command != '' }}
-        strategy:
-            matrix:
-                python-version: ${{ fromJson(inputs.python_versions) }}
-            fail-fast: false
-        defaults:
-            run:
-                shell: bash
-                working-directory: ${{ inputs.working_directory }}
-        steps:
-            - name: Check out
-              uses: actions/checkout@v4
+  tests-and-type-check:
+    name: Tests & Type Checks
+    runs-on: ubuntu-latest
+    needs: quality
+    if: ${{ inputs.test_command != '' || inputs.typecheck_command != '' }}
+    strategy:
+      matrix:
+        python-version: ${{ fromJson(inputs.python_versions) }}
+      fail-fast: false
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ inputs.working_directory }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
 
-            - name: Set up the environment
-              uses: DCC-BS/ci-workflows/actions/setup-python-env@v1
-              with:
-                  python-version: ${{ matrix.python-version }}
-                  uv-version: ${{ inputs.uv_version }}
-                  working-directory: ${{ inputs.working_directory }}
+      - name: Set up the environment
+        uses: DCC-BS/ci-workflows/actions/setup-python-env@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+          uv-version: ${{ inputs.uv_version }}
+          working-directory: ${{ inputs.working_directory }}
 
-            - name: Run tests
-              if: ${{ inputs.test_command != '' }}
-              run: ${{ inputs.test_command }}
+      - name: Run tests
+        if: ${{ inputs.test_command != '' }}
+        run: ${{ inputs.test_command }}
 
-            - name: Run type checks
-              if: ${{ inputs.typecheck_command != '' }}
-              run: ${{ inputs.typecheck_command }}
+      - name: Run type checks
+        if: ${{ inputs.typecheck_command != '' }}
+        run: ${{ inputs.typecheck_command }}

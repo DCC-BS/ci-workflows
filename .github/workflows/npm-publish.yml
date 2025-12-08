@@ -1,104 +1,104 @@
 name: Publish Package to NPM
 
 on:
-    workflow_call:
-        inputs:
-            version_type:
-                description: "Version bump type (major | minor | patch)"
-                required: false
-                type: string
-                default: "patch"
-            node_version:
-                description: "Node.js version used for build/publish"
-                required: false
-                type: string
-                default: "24.x"
-            registry_url:
-                description: "Registry URL passed to setup-node"
-                required: false
-                type: string
-                default: "https://registry.npmjs.org"
-            bun_version:
-                description: "Version of Bun to install"
-                required: false
-                type: string
-                default: "latest"
-            install_command:
-                description: "Command to install dependencies"
-                required: false
-                type: string
-                default: "bun install"
-            build_command:
-                description: "Optional build command (skip when empty)"
-                required: false
-                type: string
-                default: "bun generate"
-            prepack_command:
-                description: "Optional prepack command (skip when empty)"
-                required: false
-                type: string
-                default: "bun run prepack"
-            publish_command:
-                description: "Command that publishes the package"
-                required: false
-                type: string
-                default: "bun publish --access public"
-        secrets:
-            NPM_TOKEN:
-                description: "Token with publish rights to the target registry"
-                required: true
+  workflow_call:
+    inputs:
+      version_type:
+        description: "Version bump type (major | minor | patch)"
+        required: false
+        type: string
+        default: "patch"
+      node_version:
+        description: "Node.js version used for build/publish"
+        required: false
+        type: string
+        default: "24.x"
+      registry_url:
+        description: "Registry URL passed to setup-node"
+        required: false
+        type: string
+        default: "https://registry.npmjs.org"
+      bun_version:
+        description: "Version of Bun to install"
+        required: false
+        type: string
+        default: "latest"
+      install_command:
+        description: "Command to install dependencies"
+        required: false
+        type: string
+        default: "bun install"
+      build_command:
+        description: "Optional build command (skip when empty)"
+        required: false
+        type: string
+        default: "bun generate"
+      prepack_command:
+        description: "Optional prepack command (skip when empty)"
+        required: false
+        type: string
+        default: "bun run prepack"
+      publish_command:
+        description: "Command that publishes the package"
+        required: false
+        type: string
+        default: "bun publish --access public"
+    secrets:
+      NPM_TOKEN:
+        description: "Token with publish rights to the target registry"
+        required: true
 
 jobs:
-    publish:
-        name: Publish Package
-        runs-on: ubuntu-latest
-        permissions:
-            contents: write
-        steps:
-            - name: Check out repository
-              uses: actions/checkout@v4
+  publish:
+    name: Publish Package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
 
-            - name: Set up Node.js
-              uses: actions/setup-node@v4
-              with:
-                  node-version: ${{ inputs.node_version }}
-                  registry-url: ${{ inputs.registry_url }}
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node_version }}
+          registry-url: ${{ inputs.registry_url }}
 
-            - name: Install Bun
-              uses: oven-sh/setup-bun@v2
-              with:
-                  bun-version: ${{ inputs.bun_version }}
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ inputs.bun_version }}
 
-            - name: Install dependencies
-              if: ${{ inputs.install_command != '' }}
-              run: ${{ inputs.install_command }}
+      - name: Install dependencies
+        if: ${{ inputs.install_command != '' }}
+        run: ${{ inputs.install_command }}
 
-            - name: Build project
-              if: ${{ inputs.build_command != '' }}
-              run: ${{ inputs.build_command }}
+      - name: Build project
+        if: ${{ inputs.build_command != '' }}
+        run: ${{ inputs.build_command }}
 
-            - name: Run prepack
-              if: ${{ inputs.prepack_command != '' }}
-              run: ${{ inputs.prepack_command }}
+      - name: Run prepack
+        if: ${{ inputs.prepack_command != '' }}
+        run: ${{ inputs.prepack_command }}
 
-            - name: Update package version
-              run: npm version ${{ inputs.version_type }} --no-git-tag-version
+      - name: Update package version
+        run: npm version ${{ inputs.version_type }} --no-git-tag-version
 
-            - name: Configure git
-              run: |
-                  git config --local user.email "action@github.com"
-                  git config --local user.name "GitHub Action"
+      - name: Configure git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
 
-            - name: Commit version update
-              run: |
-                  VERSION="$(node -p "require('./package.json').version")"
-                  git add package.json package-lock.json 2>/dev/null || true
-                  git add bun.lockb 2>/dev/null || true
-                  git commit -m "build: bump version to ${VERSION}"
-                  git push
+      - name: Publish Package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: ${{ inputs.publish_command }}
 
-            - name: Publish Package
-              env:
-                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-                  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-              run: ${{ inputs.publish_command }}
+      - name: Commit version update
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          git add package.json package-lock.json 2>/dev/null || true
+          git add bun.lock 2>/dev/null || true
+          git commit -m "build: bump version to ${VERSION}"
+          git push
