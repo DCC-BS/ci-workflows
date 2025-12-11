@@ -91,14 +91,11 @@ jobs:
           git config --local user.name "GitHub Action"
 
       - name: Publish Package
-        env:
-          NPM_CONFIG_PROVENANCE: true
         run: ${{ inputs.publish_command }}
 
       - name: Commit version update
         run: |
           VERSION="$(node -p "require('./package.json').version")"
-          git add package.json package-lock.json 2>/dev/null || true
-          git add bun.lock 2>/dev/null || true
+          git add .
           git commit -m "build: bump version to ${VERSION}"
           git push
