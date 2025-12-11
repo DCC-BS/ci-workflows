@@ -1,5 +1,8 @@
 name: Publish Package to NPM
 
+permissions:
+  id-token: write
+
 on:
   workflow_call:
     inputs:
@@ -42,11 +45,7 @@ on:
         description: "Command that publishes the package"
         required: false
         type: string
-        default: "bun publish --access public"
-    secrets:
-      NPM_TOKEN:
-        description: "Token with publish rights to the target registry"
-        required: true
+        default: "npm publish --access public"
 
 jobs:
   publish:
@@ -91,8 +90,7 @@ jobs:
 
       - name: Publish Package
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
         run: ${{ inputs.publish_command }}
 
       - name: Commit version update
