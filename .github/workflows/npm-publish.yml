@@ -90,6 +90,9 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
 
+      - name: Clear auth before publish
+        run: unset NODE_AUTH_TOKEN
+
       - name: Publish Package
         env:
           NPM_CONFIG_PROVENANCE: true
