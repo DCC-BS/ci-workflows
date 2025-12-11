@@ -43,10 +43,6 @@ on:
         required: false
         type: string
         default: "npm publish --access public"
-    secrets:
-      NPM_TOKEN:
-        description: "Token with publish rights to the target registry"
-        required: true
 
 jobs:
   publish:
@@ -64,6 +60,10 @@ jobs:
         with:
           node-version: ${{ inputs.node_version }}
           registry-url: ${{ inputs.registry_url }}
+
+      # Use npm CLI 11.5.1+ because it knows how to use OIDC for trusted publishing
+      - name: Ensure recent npm
+        run: corepack enable && corepack prepare npm@latest --activate
 
       - name: Install Bun
         uses: oven-sh/setup-bun@v2
