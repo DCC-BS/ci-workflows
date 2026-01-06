@@ -1,0 +1,24 @@
+on:
+  workflow_call:
+    inputs:
+      doc_path:
+        type: string
+        default: "README.md"
+    secrets:
+      OPENAI_API_KEY:
+        required: true
+      GH_TOKEN:
+        required: true
+
+jobs:
+  check-and-update:
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.body, '- [x] LLM Doc Update')
+    steps:
+      - uses: DCC-BS/ci-workflows/.github/workflows/llm-doc-update.yml@main
+        with:
+          doc_repo: ${{ github.repository }}
+          doc_path: ${{ inputs.doc_path }}
+        secrets:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}

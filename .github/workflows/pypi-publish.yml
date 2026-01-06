@@ -1,0 +1,90 @@
+name: Publish to PyPI
+
+on:
+    workflow_call:
+        inputs:
+            python_version:
+                description: "Python version to use"
+                required: false
+                type: string
+                default: "3.12"
+            uv_version:
+                description: "Version of uv to install"
+                required: false
+                type: string
+                default: "latest"
+            install_command:
+                description: "Command to install python/dependencies"
+                required: false
+                type: string
+                default: "uv python install"
+            build_command:
+                description: "Command to build the package"
+                required: false
+                type: string
+                default: "uv build"
+            publish_command:
+                description: "Command to publish the package"
+                required: false
+                type: string
+                default: "uv publish"
+            create_release_tag:
+                description: "Whether to tag and push the version"
+                required: false
+                type: boolean
+                default: true
+
+jobs:
+    publish:
+        name: Build and publish
+        runs-on: ubuntu-latest
+        permissions:
+            # Required for Trusted Publishing
+            id-token: write
+            # Required for checking out code and pushing tags
+            contents: write
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Install uv
+              uses: astral-sh/setup-uv@v5
+              with:
+                  enable-cache: true
+                  version: ${{ inputs.uv_version }}
+
+            - name: Set up Python
+              run: ${{ inputs.install_command }}
+
+            - name: Tag and push
+              if: ${{ inputs.create_release_tag }}
+              run: |
+                  # Get version using uv
+                  VERSION=$(uv version --short)
+
+                  TAG="v$VERSION"
+                  echo "Tagging as $TAG"
+
+                  # Configure git
+                  git config --global user.name "github-actions[bot]"
+                  git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+                  # Check if tag already exists locally or remotely
+                  if git rev-parse "$TAG" >/dev/null 2>&1; then
+                    echo "Tag $TAG already exists locally."
+                  elif git ls-remote --tags origin | grep -q "refs/tags/$TAG"; then
+                    echo "Tag $TAG already exists on remote."
+                  else
+                    git tag "$TAG"
+                    git push origin "$TAG"
+                  fi
+
+            - name: Build package
+              if: ${{ inputs.build_command != '' }}
+              run: ${{ inputs.build_command }}
+
+            - name: Publish package
+              if: ${{ inputs.publish_command != '' }}
+              run: ${{ inputs.publish_command }}
+

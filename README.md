@@ -151,6 +151,33 @@ jobs:
       publish_command: bun publish --access public
 ```
 
+### Publish Package to PyPI
+
+Reusable workflow to build, tag, and publish a package using `uv`. Requires `id-token: write` permission for Trusted Publishing (or configured secrets if not using OIDC, though this workflow assumes Trusted Publishing by default for permissions).
+
+- `python_version` — Python version to use (default: `"3.12"`)
+- `uv_version` — Version of uv to install (default: `"latest"`)
+- `create_release_tag` — Whether to create and push a git tag based on the version (default: `true`)
+- `install_command`, `build_command`, `publish_command` — Override default commands.
+
+Example usage:
+
+```yaml
+name: Publish to PyPI
+on:
+  workflow_dispatch:
+
+jobs:
+  publish:
+    uses: DCC-BS/ci-workflows/.github/workflows/pypi-publish.yml@v1
+    permissions:
+      id-token: write
+      contents: write
+    with:
+      python_version: "3.12"
+      create_release_tag: true
+```
+
 ### LLM Documentation Auto-Updater
 
 Reusable workflow to automatically check if a PR requires documentation updates using an LLM (OpenAI). If updates are needed, it creates a PR in the documentation repository.
