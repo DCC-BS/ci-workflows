@@ -213,6 +213,7 @@ def main():
         print("Missing GH_TOKEN or OPENAI_API_KEY environment variables.")
         sys.exit(1)
         
+    print(openai_key)
     gh = Github(gh_token)
     client = OpenAI(api_key=openai_key, base_url=OPENAI_BASE_URL)
     
