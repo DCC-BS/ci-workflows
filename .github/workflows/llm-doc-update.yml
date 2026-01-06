@@ -1,5 +1,4 @@
 name: "LLM Doc Auto-Update"
-description: "Checks PR diff against docs using OpenAI and updates docs if needed."
 
 on:
   workflow_call:
@@ -36,7 +35,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          repository: ${{ inputs.source_repo }}
       
       - name: Checkout Workflow Repo
         uses: actions/checkout@v4

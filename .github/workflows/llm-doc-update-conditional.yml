@@ -26,15 +26,13 @@ on:
 
 jobs:
   check-and-update:
-    runs-on: ubuntu-latest
     if: contains(github.event.pull_request.body, '- [x] LLM Doc Update')
-    steps:
-      - uses: DCC-BS/ci-workflows/.github/workflows/llm-doc-update.yml@main
-        with:
-          doc_repo: ${{ inputs.doc_repo }}
-          doc_path: ${{ inputs.doc_path }}  
-          openai_model: ${{ inputs.openai_model }}
-          openai_base_url: ${{ inputs.openai_base_url }}
-        secrets:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+    uses: ./.github/workflows/llm-doc-update.yml
+    with:
+      doc_repo: ${{ inputs.doc_repo }}
+      doc_path: ${{ inputs.doc_path }}  
+      openai_model: ${{ inputs.openai_model }}
+      openai_base_url: ${{ inputs.openai_base_url }}
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
