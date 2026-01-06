@@ -151,6 +151,43 @@ jobs:
       publish_command: bun publish --access public
 ```
 
+### LLM Documentation Auto-Updater
+
+Reusable workflow to automatically check if a PR requires documentation updates using an LLM (OpenAI). If updates are needed, it creates a PR in the documentation repository.
+
+- `doc_repo` — Owner/Name of the target documentation repository.
+- `doc_path` — Path to markdown files in the doc repo.
+- `pr_number` — (Optional) PR number to analyze. Inferred from context if missing.
+- `source_repo` — (Optional) Source repository. Inferred from context if missing.
+- `openai_model` — (Optional) Model to use (default: `gpt-4o`).
+- `openai_base_url` — (Optional) Custom OpenAI Base URL.
+
+Secrets required:
+- `OPENAI_API_KEY`: API key for OpenAI.
+- `GH_TOKEN`: Personal Access Token (PAT) with write access to the documentation repository.
+
+Example usage:
+
+```yaml
+name: Sync Documentation
+on:
+  workflow_dispatch:
+  # Or use pull_request types if auto-triggering is desired
+  pull_request:
+    types: [ closed ] # Example: Check after merge
+
+jobs:
+  check-docs:
+    uses: DCC-BS/ci-workflows/.github/workflows/llm-doc-update.yml@v1
+    with:
+      doc_repo: "DCC-BS/documentation"
+      doc_path: "docs/relevant-section"
+      openai_model: "gpt-4-turbo"
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      GH_TOKEN: ${{ secrets.DOC_REPO_PAT }}
+```
+
 ## Versioning
 - Tagged releases follow SemVer (e.g., `v1.0.0`).
 - Consumers should pin to the major tag (e.g., `@v1`) to receive compatible improvements.

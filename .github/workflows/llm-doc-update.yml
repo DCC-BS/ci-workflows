@@ -1,0 +1,95 @@
+name: "LLM Doc Auto-Update"
+description: "Checks PR diff against docs using OpenAI and updates docs if needed."
+
+on:
+  workflow_call:
+    inputs:
+      doc_repo:
+        required: true
+        type: string
+        description: "Target documentation repository (owner/name)"
+      doc_path:
+        required: true
+        type: string
+        description: "Path to documentation files in the doc repo"
+      pr_number:
+        required: false
+        type: string
+        description: "PR number. If empty, inferred from context."
+      source_repo:
+        required: false
+        type: string
+        description: "Source repo. If empty, inferred from context."
+      openai_model:
+        required: false
+        type: string
+        default: "gpt-4o"
+        description: "OpenAI Model to use."
+      openai_base_url:
+        required: false
+        type: string
+        description: "Custom OpenAI Base URL."
+    secrets:
+      OPENAI_API_KEY:
+        required: true
+      GH_TOKEN:
+        required: true
+        description: "Token with write access to doc_repo"
+
+jobs:
+  llm-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          repository: ${{ inputs.source_repo }}
+      
+      - name: Checkout Workflow Repo
+        uses: actions/checkout@v4
+        with:
+          repository: DCC-BS/ci-workflows
+          path: ci-workflows
+          
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: Install dependencies
+        run: |
+          pip install -r ci-workflows/scripts/requirements.txt
+          
+      - name: Run LLM Doc Updater
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ inputs.openai_model }}
+          OPENAI_BASE_URL: ${{ inputs.openai_base_url }}
+        run: |
+          # Determine PR Number
+          PR_NUM="${{ inputs.pr_number }}"
+          if [ -z "$PR_NUM" ]; then
+            PR_NUM="${{ github.event.pull_request.number }}"
+          fi
+          
+          # Determine Source Repo
+          SRC_REPO="${{ inputs.source_repo }}"
+          if [ -z "$SRC_REPO" ]; then
+             SRC_REPO="${{ github.repository }}"
+          fi
+
+          if [ -z "$PR_NUM" ] || [ "$PR_NUM" == "null" ]; then
+             echo "Error: Could not determine PR number. Ensure this is run in a PR context or pass pr_number."
+             exit 1
+          fi
+
+          echo "Running Doc Updater for PR #$PR_NUM in $SRC_REPO against $DOC_REPO/$DOC_PATH..."
+
+          python ci-workflows/scripts/llm_doc_updater.py \
+            --source-pr "$PR_NUM" \
+            --source-repo "$SRC_REPO" \
+            --doc-repo "${{ inputs.doc_repo }}" \
+            --doc-path "${{ inputs.doc_path }}" \
+            --repo-path "."
