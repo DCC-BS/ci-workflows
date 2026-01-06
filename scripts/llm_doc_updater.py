@@ -178,10 +178,10 @@ Return a valid JSON object where:
 - Files that required no changes must be omitted from the object.
 
 Example:
-{
+{{
   "docs/api/index.md": "---\ntitle: API\n---\n# API\n\n[Full Updated Content...]",
   "docs/guide/setup.md": "[Full Updated Content...]"
-}
+}}
 
 ---
 Input Data:
