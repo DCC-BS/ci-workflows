@@ -12,14 +12,6 @@ on:
         required: true
         type: string
         description: "Path to documentation files in the doc repo"
-      pr_number:
-        required: false
-        type: string
-        description: "PR number. If empty, inferred from context."
-      source_repo:
-        required: false
-        type: string
-        description: "Source repo. If empty, inferred from context."
       openai_model:
         required: false
         type: string
@@ -69,16 +61,10 @@ jobs:
           OPENAI_BASE_URL: ${{ inputs.openai_base_url }}
         run: |
           # Determine PR Number
-          PR_NUM="${{ inputs.pr_number }}"
-          if [ -z "$PR_NUM" ]; then
-            PR_NUM="${{ github.event.pull_request.number }}"
-          fi
+          PR_NUM="${{ github.event.pull_request.number }}"
           
           # Determine Source Repo
-          SRC_REPO="${{ inputs.source_repo }}"
-          if [ -z "$SRC_REPO" ]; then
-             SRC_REPO="${{ github.repository }}"
-          fi
+          SRC_REPO="${{ github.repository }}"
 
           if [ -z "$PR_NUM" ] || [ "$PR_NUM" == "null" ]; then
              echo "Error: Could not determine PR number. Ensure this is run in a PR context or pass pr_number."

@@ -1,9 +1,23 @@
 on:
   workflow_call:
     inputs:
-      doc_path:
+      doc_repo:
+        required: true
         type: string
-        default: "README.md"
+        description: "Target documentation repository (owner/name)"
+      doc_path:
+        required: true
+        type: string
+        description: "Path to documentation files in the doc repo"
+      openai_model:
+        required: false
+        type: string
+        default: "gpt-4o"
+        description: "OpenAI Model to use."
+      openai_base_url:
+        required: false
+        type: string
+        description: "Custom OpenAI Base URL."
     secrets:
       OPENAI_API_KEY:
         required: true
@@ -17,8 +31,10 @@ jobs:
     steps:
       - uses: DCC-BS/ci-workflows/.github/workflows/llm-doc-update.yml@main
         with:
-          doc_repo: ${{ github.repository }}
-          doc_path: ${{ inputs.doc_path }}
+          doc_repo: ${{ inputs.doc_repo }}
+          doc_path: ${{ inputs.doc_path }}  
+          openai_model: ${{ inputs.openai_model }}
+          openai_base_url: ${{ inputs.openai_base_url }}
         secrets:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
