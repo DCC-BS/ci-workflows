@@ -44,7 +44,20 @@ def get_local_git_diff(gh, repo_name, pr_number, repo_path="."):
         subprocess.check_call(["git", "fetch", "origin", base_ref], cwd=repo_path)
     except subprocess.CalledProcessError as e:
         print(f"Warning: Error fetching base branch {base_ref}: {e}")
-
+        # Verify the base ref exists locally before continuing
+        try:
+            subprocess.check_call(
+                ["git", "rev-parse", "--verify", f"origin/{base_ref}"],
+                cwd=repo_path,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            print(f"Base ref origin/{base_ref} exists locally, continuing...")
+        except subprocess.CalledProcessError:
+            print(
+                f"Error: Base ref origin/{base_ref} does not exist locally and fetch failed."
+            )
+            sys.exit(1)
     # Fetch the PR head explicitly
     try:
         print(f"Fetching PR head (pull/{pr_number}/head)...")
