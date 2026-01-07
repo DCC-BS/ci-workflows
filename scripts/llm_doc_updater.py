@@ -3,6 +3,7 @@ import os
 import subprocess
 import sys
 
+import github
 from constants import (
     MAX_DIFF_CHARS,
     MAX_DOC_CONTEXT_CHARS,
@@ -255,7 +256,7 @@ def main():
         print("Missing GH_TOKEN or OPENAI_API_KEY environment variables.")
         sys.exit(1)
 
-    gh = Github(gh_token)
+    gh = Github(auth=github.Auth.Token(gh_token))
     client = OpenAI(api_key=openai_key, base_url=OPENAI_BASE_URL)
 
     # 1. Get Diff
