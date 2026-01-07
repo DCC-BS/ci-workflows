@@ -5,6 +5,7 @@ import sys
 
 import github
 from constants import (
+    DIFF_FILTER_PATTERNS,
     MAX_DIFF_CHARS,
     MAX_DOC_CONTEXT_CHARS,
     OPENAI_BASE_URL,
@@ -55,7 +56,7 @@ def get_local_git_diff(gh, repo_name, pr_number, repo_path="."):
                 "-U20",
                 "--inter-hunk-context=15",
                 "--",
-                ".",
+                *DIFF_FILTER_PATTERNS,
             ],
             cwd=repo_path,
             capture_output=True,

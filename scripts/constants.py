@@ -6,6 +6,7 @@ MAX_DOC_CONTEXT_CHARS = 50000
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o")
 OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL")
 PR_BRANCH_PREFIX = "doc-update-pr"
+DIFF_FILTER_PATTERNS: list[str] = ["**/*.py", "**/*.ts", "**/*.tsx", "**/*.vue"]
 
 # Triage Prompts
 TRIAGE_SYSTEM_PROMPT = "You are a helpful assistant."
