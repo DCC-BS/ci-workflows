@@ -29,29 +29,41 @@ def get_local_git_diff(gh, repo_name, pr_number, repo_path="."):
         print(f"Error: {repo_path} is not a valid git repository.")
         sys.exit(1)
 
-    print(f"Resolving base branch for PR #{pr_number} in {repo_name}...")
+    print(f"Resolving base and head for PR #{pr_number} in {repo_name}...")
     repo = gh.get_repo(repo_name)
     pr = repo.get_pull(pr_number)
     base_ref = pr.base.ref
+    head_sha = pr.head.sha
 
     print(f"Base branch is: {base_ref}")
+    print(f"Head SHA is: {head_sha}")
 
     # Ensure we have the base ref fetched
     try:
+        print(f"Fetching origin/{base_ref}...")
         subprocess.check_call(["git", "fetch", "origin", base_ref], cwd=repo_path)
     except subprocess.CalledProcessError as e:
-        print(f"Error fetching base branch {base_ref}: {e}")
+        print(f"Warning: Error fetching base branch {base_ref}: {e}")
+
+    # Fetch the PR head explicitly
+    try:
+        print(f"Fetching PR head (pull/{pr_number}/head)...")
+        subprocess.check_call(
+            ["git", "fetch", "origin", f"pull/{pr_number}/head"], cwd=repo_path
+        )
+    except subprocess.CalledProcessError as e:
+        print(f"Error fetching PR head: {e}")
         sys.exit(1)
 
-    print(f"Generating diff against origin/{base_ref}...")
+    print(f"Generating diff between origin/{base_ref} and FETCH_HEAD...")
     try:
-        # Diff HEAD against the fetched base
-        # Using -- . to verify we are diffing the current directory (repo)
+        # Diff origin/{base_ref} against the fetched PR head (FETCH_HEAD)
         result = subprocess.run(
             [
                 "git",
                 "diff",
                 f"origin/{base_ref}",
+                "FETCH_HEAD",
                 "-W",
                 "-U20",
                 "--inter-hunk-context=15",
