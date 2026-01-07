@@ -18,6 +18,10 @@ on:
         required: false
         type: string
         description: "Custom OpenAI Base URL."
+      pr_number:
+        required: true
+        type: string
+        description: "PR number to analyze."
     secrets:
       OPENAI_API_KEY:
         required: true
@@ -26,13 +30,14 @@ on:
 
 jobs:
   check-and-update:
-    if: contains(github.event.pull_request.body, '- [x] LLM Doc Update')
+    if: ${{ github.event.comment && github.event.comment.body == '/documentation' && github.event.issue && github.event.issue.pull_request }}
     uses: ./.github/workflows/llm-doc-update.yml
     with:
       doc_repo: ${{ inputs.doc_repo }}
-      doc_path: ${{ inputs.doc_path }}  
+      doc_path: ${{ inputs.doc_path }}
       openai_model: ${{ inputs.openai_model }}
       openai_base_url: ${{ inputs.openai_base_url }}
+      pr_number: ${{ inputs.pr_number }}
     secrets:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       GH_TOKEN: ${{ secrets.GH_TOKEN }}
