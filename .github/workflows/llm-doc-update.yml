@@ -20,6 +20,10 @@ on:
         required: false
         type: string
         description: "Custom OpenAI Base URL."
+      pr_number:
+        required: true
+        type: string
+        description: "PR number to analyze."
     secrets:
       OPENAI_API_KEY:
         required: true
@@ -35,32 +39,33 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
+
       - name: Checkout Workflow Repo
         uses: actions/checkout@v4
         with:
           repository: DCC-BS/ci-workflows
           path: ci-workflows
-          
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
-          
+          python-version: "3.11"
+
       - name: Install dependencies
         run: |
           pip install -r ci-workflows/scripts/requirements.txt
-          
+
       - name: Run LLM Doc Updater
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: ${{ inputs.openai_model }}
           OPENAI_BASE_URL: ${{ inputs.openai_base_url }}
+          PR_NUMBER: ${{ inputs.pr_number }}
         run: |
           # Determine PR Number
-          PR_NUM="${{ github.event.pull_request.number }}"
-          
+          PR_NUM="${PR_NUMBER}"
+
           # Determine Source Repo
           SRC_REPO="${{ github.repository }}"
 
