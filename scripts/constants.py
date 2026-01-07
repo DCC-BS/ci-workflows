@@ -6,7 +6,16 @@ MAX_DOC_CONTEXT_CHARS = 50000
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o")
 OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL")
 PR_BRANCH_PREFIX = "doc-update-pr"
-DIFF_FILTER_PATTERNS: list[str] = ["**/*.py", "**/*.ts", "**/*.tsx", "**/*.vue"]
+DIFF_FILTER_PATTERNS: list[str] = [
+    "**/*.py",
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.vue",
+    "**/*.json",
+    "**/*.yaml",
+    "pyproject.toml",
+    ".env.example",
+]
 
 # Triage Prompts
 TRIAGE_SYSTEM_PROMPT = "You are a helpful assistant."
@@ -22,6 +31,9 @@ Conditions for documentation updates:
 4. Currently undocumented functionality in the diff
 5. Developer-Facing Only: Focus exclusively on changes that affect the public API, configuration, installation, or behavior as experienced by a developer using the library/app.
 6. Ignore Internal Logic: No documentation updates needed for internal refactors, private helper functions, performance optimizations, or logic changes that do not alter the external interface or outcome.
+
+PR Description:
+{pr_description}
 
 Git Diff:
 {diff_text} 
@@ -45,10 +57,13 @@ Input Data:
 ---
 {target_content}
 ---
-3. Git Diff (Code Changes):
+3. PR Description:
+{pr_description}
+
+4. Git Diff (Code Changes):
 {diff_text}
 
-4. Ambient Context (Other files being updated in this session):
+5. Ambient Context (Other files being updated in this session):
 {ambient_context}
 
 Objectives:

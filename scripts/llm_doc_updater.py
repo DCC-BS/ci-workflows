@@ -88,7 +88,7 @@ def get_local_git_diff(gh, repo_name, pr_number, repo_path="."):
             text=True,
             check=True,
         )
-        return result.stdout
+        return result.stdout, pr.body
     except subprocess.CalledProcessError as e:
         print(f"Error generating git diff: {e.stderr}")
         sys.exit(1)
@@ -122,7 +122,7 @@ def get_doc_files(gh, doc_repo_name, doc_path):
     return files_content
 
 
-def call_openai_triage(client, diff_text, doc_files):
+def call_openai_triage(client, diff_text, pr_description, doc_files):
     print("Checking each documentation file for needed updates...")
     files_to_update = []
 
@@ -130,6 +130,7 @@ def call_openai_triage(client, diff_text, doc_files):
         print(f"  Checking {path}...")
         prompt = TRIAGE_USER_PROMPT_TEMPLATE.format(
             diff_text=diff_text[:MAX_DIFF_CHARS],
+            pr_description=pr_description or "No description provided.",
             path=path,
             content=content[:MAX_DOC_CONTEXT_CHARS],
         )
@@ -150,7 +151,7 @@ def call_openai_triage(client, diff_text, doc_files):
     return files_to_update
 
 
-def call_openai_update(client, diff_text, doc_files):
+def call_openai_update(client, diff_text, pr_description, doc_files):
     print(
         f"Asking OpenAI to generate updated documentation for {len(doc_files)} files ..."
     )
@@ -172,6 +173,7 @@ def call_openai_update(client, diff_text, doc_files):
             target_path=target_path,
             target_content=target_content,
             diff_text=diff_text[:MAX_DIFF_CHARS],
+            pr_description=pr_description or "No description provided.",
             ambient_context=ambient_context[:MAX_DOC_CONTEXT_CHARS],
         )
 
@@ -286,7 +288,7 @@ def main():
     client = OpenAI(api_key=openai_key, base_url=OPENAI_BASE_URL)
 
     # 1. Get Diff
-    diff_text = get_local_git_diff(
+    diff_text, pr_description = get_local_git_diff(
         gh, args.source_repo, int(args.source_pr), args.repo_path
     )
     if not diff_text.strip():
@@ -302,7 +304,7 @@ def main():
         sys.exit(0)
 
     # 3. Triage
-    files_to_update = call_openai_triage(client, diff_text, doc_files)
+    files_to_update = call_openai_triage(client, diff_text, pr_description, doc_files)
     if not files_to_update:
         print("OpenAI determined no documentation update is needed.")
         sys.exit(0)
@@ -315,7 +317,7 @@ def main():
     filtered_doc_files = {path: doc_files[path] for path in files_to_update}
 
     # 4. Generate Updates
-    updates = call_openai_update(client, diff_text, filtered_doc_files)
+    updates = call_openai_update(client, diff_text, pr_description, filtered_doc_files)
 
     if not updates:
         print("OpenAI returned no updates.")
