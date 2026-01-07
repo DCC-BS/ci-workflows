@@ -3,10 +3,7 @@ import os
 import subprocess
 import sys
 
-from github import Github, GithubException
-from openai import OpenAI
-
-from scripts.constants import (
+from constants import (
     MAX_DIFF_CHARS,
     MAX_DOC_CONTEXT_CHARS,
     OPENAI_BASE_URL,
@@ -17,6 +14,8 @@ from scripts.constants import (
     UPDATE_SYSTEM_PROMPT,
     UPDATE_USER_PROMPT_TEMPLATE,
 )
+from github import Github, GithubException
+from openai import OpenAI
 
 
 def get_local_git_diff(gh, repo_name, pr_number, repo_path="."):
