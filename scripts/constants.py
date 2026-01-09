@@ -32,6 +32,12 @@ Conditions for documentation updates:
 5. Developer-Facing Only: Focus exclusively on changes that affect the public API, configuration, installation, or behavior as experienced by a developer using the library/app.
 6. Ignore Internal Logic: No documentation updates needed for internal refactors, private helper functions, performance optimizations, or logic changes that do not alter the external interface or outcome.
 
+Special Case - VitePress Config (.vitepress/config.ts or .vitepress/config.mts):
+If the file is a VitePress config file, check if the sidebar navigation needs to be updated based on:
+- New documentation pages being added that should appear in the sidebar
+- Existing pages being removed or renamed that are referenced in the sidebar
+- Reorganization of documentation structure requiring sidebar updates
+
 PR Description:
 {pr_description}
 
@@ -83,12 +89,21 @@ VitePress Guidelines:
 - Use Custom Containers (::: info, ::: tip, etc.) and Code Groups.
 - Use Badges for new features.
 
+Special Case - VitePress Config (.vitepress/config.ts or .vitepress/config.mts):
+If the target file is a VitePress config file, it contains the sidebar navigation configuration.
+Update the sidebar when:
+- New documentation pages are added and need to appear in the navigation
+- Existing pages are removed or renamed and their sidebar entries need updating
+- Documentation structure changes require reorganization of the sidebar items
+Preserve the existing TypeScript structure and only modify the sidebar/nav sections as needed.
+
 Constraints:
-- Return ONLY the full, updated Markdown content for {target_path}.
+- Return ONLY the full, updated content for {target_path}.
 - No JSON, no preamble, no meta-commentary, no triple-backtick wrappers around the whole response.
-- Just the raw Markdown.
-- Markdown Syntax: Strictly follow VitePress-flavored Markdown. Ensure all code blocks are wrapped in triple backticks (```).
-- Preserve Symbols: Do NOT remove backticks (`) or any other markdown-specific syntax. All code examples must remain inside their respective code blocks.
+- Just the raw file content.
+- For Markdown files: Strictly follow VitePress-flavored Markdown. Ensure all code blocks are wrapped in triple backticks (```).
+- For TypeScript config files: Preserve the existing code structure, imports, and formatting.
+- Preserve Symbols: Do NOT remove backticks (`) or any other syntax-specific characters. All code examples must remain inside their respective code blocks.
 - No Speculation: Only document what is explicitly supported by the code changes in the diff.
 - No Meta-Commentary: The response must not contain explanations, reasoning, or "I have updated the files..." messages.
 - Pure Output: The output must be the updated content of the files only.

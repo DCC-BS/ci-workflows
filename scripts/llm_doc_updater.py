@@ -94,10 +94,35 @@ def get_local_git_diff(gh, repo_name, pr_number, repo_path="."):
         sys.exit(1)
 
 
+def get_vitepress_config(repo):
+    """Check for and fetch .vitepress/config.ts if it exists."""
+    vitepress_config_path = ".vitepress/config.ts"
+    try:
+        config_file = repo.get_contents(vitepress_config_path)
+        content = config_file.decoded_content.decode("utf-8")
+        print(f"Found VitePress config at {vitepress_config_path}")
+        return {vitepress_config_path: content}
+    except GithubException:
+        # Try .mts extension as alternative
+        vitepress_config_path = ".vitepress/config.mts"
+        try:
+            config_file = repo.get_contents(vitepress_config_path)
+            content = config_file.decoded_content.decode("utf-8")
+            print(f"Found VitePress config at {vitepress_config_path}")
+            return {vitepress_config_path: content}
+        except GithubException:
+            print("No VitePress config file found (.vitepress/config.ts or .mts)")
+            return {}
+
+
 def get_doc_files(gh, doc_repo_name, doc_path):
     print(f"Fetching documentation files from {doc_repo_name}/{doc_path}...")
     repo = gh.get_repo(doc_repo_name)
     files_content = {}
+
+    # Always check for VitePress config and include it if present
+    vitepress_config = get_vitepress_config(repo)
+    files_content.update(vitepress_config)
 
     try:
         contents = repo.get_contents(doc_path)
