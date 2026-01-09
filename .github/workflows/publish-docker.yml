@@ -1,125 +1,124 @@
 name: Publish Docker to GHCR (Reusable)
 
 on:
-    workflow_call:
-        inputs:
-            project_type:
-                description: "Project type to read version from (node | python)"
-                required: false
-                type: string
-                default: "node"
-            registry:
-                description: "Registry hostname"
-                required: false
-                type: string
-                default: "ghcr.io"
-            image_name:
-                description: "Full image name (e.g., ghcr.io/owner/repo)"
-                required: false
-                type: string
-                default: "ghcr.io/${{ github.repository }}"
-            context:
-                required: false
-                type: string
-                default: "."
-            dockerfile:
-                required: false
-                type: string
-                default: "./Dockerfile"
-            platforms:
-                required: false
-                type: string
-                default: "linux/amd64"
-            push:
-                required: false
-                type: boolean
-                default: true
-        outputs:
-            version:
-                description: "Project version"
-                value: ${{ jobs.build-and-publish.outputs.version }}
-            tags:
-                description: "Docker tags used"
-                value: ${{ jobs.build-and-publish.outputs.tags }}
+  workflow_call:
+    inputs:
+      project_type:
+        description: "Project type to read version from (node | python)"
+        required: false
+        type: string
+        default: "node"
+      registry:
+        description: "Registry hostname"
+        required: false
+        type: string
+        default: "ghcr.io"
+      image_name:
+        description: "Full image name (e.g., ghcr.io/owner/repo)"
+        required: false
+        type: string
+        default: "ghcr.io/${{ github.repository }}"
+      context:
+        required: false
+        type: string
+        default: "."
+      dockerfile:
+        required: false
+        type: string
+        default: "./Dockerfile"
+      platforms:
+        required: false
+        type: string
+        default: "linux/amd64"
+      push:
+        required: false
+        type: boolean
+        default: true
+    outputs:
+      version:
+        description: "Project version"
+        value: ${{ jobs.build-and-publish.outputs.version }}
+      tags:
+        description: "Docker tags used"
+        value: ${{ jobs.build-and-publish.outputs.tags }}
 
 jobs:
-    build-and-publish:
-        runs-on: ubuntu-latest
-        permissions:
-            contents: read
-            packages: write
-        outputs:
-            version: ${{ steps.version.outputs.version }}
-            tags: ${{ steps.meta.outputs.tags }}
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
+  build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tags: ${{ steps.meta.outputs.tags }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-            - name: Validate inputs
-              if: inputs.project_type != 'node' && inputs.project_type != 'python'
-              run: |
-                  echo "::error::Invalid project_type '${{ inputs.project_type }}'. Must be 'node' or 'python'."
-                  exit 1
+      - name: Validate inputs
+        if: inputs.project_type != 'node' && inputs.project_type != 'python'
+        run: |
+          echo "::error::Invalid project_type '${{ inputs.project_type }}'. Must be 'node' or 'python'."
+          exit 1
 
-            - name: Setup uv
-              if: inputs.project_type == 'python'
-              uses: astral-sh/setup-uv@v7
+      - name: Setup uv
+        if: inputs.project_type == 'python'
+        uses: astral-sh/setup-uv@v7
 
-            - name: Read version
-              id: version
-              shell: bash
-              run: |
-                  if [ "${{ inputs.project_type }}" = "python" ]; then
-                    VERSION=$(uv version --short)
-                  else
-                    VERSION=$(npm pkg get version | tr -d '"')
-                  fi
-                  echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+      - name: Read version
+        id: version
+        shell: bash
+        run: |
+          if [ "${{ inputs.project_type }}" = "python" ]; then
+            VERSION=$(uv version --short)
+          else
+            VERSION=$(npm pkg get version | tr -d '"')
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-            - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-            - name: Log in to GHCR
-              uses: docker/login-action@v3
-              with:
-                  registry: ${{ inputs.registry }}
-                  username: ${{ github.actor }}
-                  password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ inputs.registry }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Extract metadata (tags, labels)
-              id: meta
-              uses: docker/metadata-action@v5
-              with:
-                  images: ${{ inputs.image_name }}
-                  tags: |
-                      type=raw,value=${{ steps.version.outputs.version }}
-                      type=raw,value=latest
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ inputs.image_name }}
+          tags: |
+            type=raw,value=${{ steps.version.outputs.version }}
+            type=raw,value=latest
 
-            - name: Build and push Docker image
-              uses: docker/build-push-action@v6
-              with:
-                  context: ${{ inputs.context }}
-                  file: ${{ inputs.dockerfile }}
-                  push: ${{ inputs.push }}
-                  tags: ${{ steps.meta.outputs.tags }}
-                  labels: ${{ steps.meta.outputs.labels }}
-                  cache-from: type=gha
-                  cache-to: type=gha,mode=max
-                  platforms: ${{ inputs.platforms }}
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ inputs.context }}
+          file: ${{ inputs.dockerfile }}
+          push: ${{ inputs.push }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          no-cache: true
+          platforms: ${{ inputs.platforms }}
 
-            - name: Summary
-              shell: bash
-              run: |
-                  {
-                    echo "## ✅ Build and Publish Complete!"
-                    echo
-                    echo "**Version:** \`${{ steps.version.outputs.version }}\`"
-                    echo "**Docker Images:**"
-                    echo "- \`${{ inputs.image_name }}:${{ steps.version.outputs.version }}\`"
-                    echo "- \`${{ inputs.image_name }}:latest\`"
-                    echo
-                    echo "**Pull Command:**"
-                    echo '```bash'
-                    echo "docker pull ${{ inputs.image_name }}:${{ steps.version.outputs.version }}"
-                    echo '```'
-                  } >> "$GITHUB_STEP_SUMMARY"
+      - name: Summary
+        shell: bash
+        run: |
+          {
+            echo "## ✅ Build and Publish Complete!"
+            echo
+            echo "**Version:** \`${{ steps.version.outputs.version }}\`"
+            echo "**Docker Images:**"
+            echo "- \`${{ inputs.image_name }}:${{ steps.version.outputs.version }}\`"
+            echo "- \`${{ inputs.image_name }}:latest\`"
+            echo
+            echo "**Pull Command:**"
+            echo '```bash'
+            echo "docker pull ${{ inputs.image_name }}:${{ steps.version.outputs.version }}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
