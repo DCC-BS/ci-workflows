@@ -23,11 +23,6 @@ on:
         required: false
         type: string
         default: ""
-      typecheck_command:
-        description: Optional command to run type checking
-        required: false
-        type: string
-        default: ""
       uv_version:
         description: uv version to install
         required: false
@@ -95,7 +90,3 @@ jobs:
       - name: Run tests
         if: ${{ inputs.test_command != '' }}
         run: ${{ inputs.test_command }}
-
-      - name: Run type checks
-        if: ${{ inputs.typecheck_command != '' }}
-        run: ${{ inputs.typecheck_command }}
