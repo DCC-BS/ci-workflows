@@ -64,6 +64,7 @@ jobs:
           python-version: ${{ inputs.quality_python_version }}
           uv-version: ${{ inputs.uv_version }}
           working-directory: ${{ inputs.working_directory }}
+          uv_extra_packages: ${{ inputs.uv_extra_packages }}
 
       - name: Run quality checks
         run: ${{ inputs.check_command }}
@@ -91,7 +92,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           uv-version: ${{ inputs.uv_version }}
           working-directory: ${{ inputs.working_directory }}
-          uv-extra-packages: ${{ inputs.uv_extra_packages }}
+          uv_extra_packages: ${{ inputs.uv_extra_packages }}
 
       - name: Run tests
         if: ${{ inputs.test_command != '' }}
