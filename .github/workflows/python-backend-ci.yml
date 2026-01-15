@@ -33,6 +33,11 @@ on:
         required: false
         type: string
         default: "."
+      uv-extra-packages:
+        description: Extra packages to install with uv
+        required: false
+        type: string
+        default: ""
 
 jobs:
   quality:
@@ -86,6 +91,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           uv-version: ${{ inputs.uv_version }}
           working-directory: ${{ inputs.working_directory }}
+          uv-extra-packages: ${{ inputs.uv_extra_packages }}
 
       - name: Run tests
         if: ${{ inputs.test_command != '' }}
