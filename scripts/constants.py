@@ -20,7 +20,7 @@ DIFF_FILTER_PATTERNS: list[str] = [
 # Triage Prompts
 TRIAGE_SYSTEM_PROMPT = "You are a helpful assistant."
 TRIAGE_USER_PROMPT_TEMPLATE = """
-You are a technical documentation assistant. 
+You are a technical documentation assistant.
 I have a git diff from a code PR and a markdown documentation file.
 Determine if the changes in the code require an update to this specific documentation file.
 
@@ -42,12 +42,12 @@ PR Description:
 {pr_description}
 
 Git Diff:
-{diff_text} 
+{diff_text}
 
 Documentation File ({path}):
 {content}
 
-Does this specific documentation file need to be updated? 
+Does this specific documentation file need to be updated?
 Answer with just "YES" or "NO".
 """
 
@@ -87,7 +87,7 @@ Objectives:
 VitePress Guidelines:
 - Preserve Frontmatter.
 - Use Custom Containers (::: info, ::: tip, etc.) and Code Groups.
-- Use Badges for new features.
+- Do not use Badges for new features.
 
 Special Case - VitePress Config (.vitepress/config.ts or .vitepress/config.mts):
 If the target file is a VitePress config file, it contains the sidebar navigation configuration.
@@ -96,6 +96,7 @@ Update the sidebar when:
 - Existing pages are removed or renamed and their sidebar entries need updating
 - Documentation structure changes require reorganization of the sidebar items
 Preserve the existing TypeScript structure and only modify the sidebar/nav sections as needed.
+The config.ts file must remain a TypeScript file. Do not wrap the content inside markdown.
 
 Constraints:
 - Return ONLY the full, updated content for {target_path}.
