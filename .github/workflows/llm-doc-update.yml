@@ -36,18 +36,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Source Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4
         with:
           fetch-depth: 0
 
       - name: Checkout Workflow Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4
         with:
           repository: DCC-BS/ci-workflows
           path: ci-workflows
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@28f2168f4d98ee0445e3c6321f6e6616c83dd5ec # v4
         with:
           python-version: "3.11"
 

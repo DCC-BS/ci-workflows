@@ -53,7 +53,7 @@ jobs:
       tags: ${{ steps.meta.outputs.tags }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4
 
       - name: Validate inputs
         if: inputs.project_type != 'node' && inputs.project_type != 'python'
@@ -63,7 +63,7 @@ jobs:
 
       - name: Setup uv
         if: inputs.project_type == 'python'
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@447e6d02b15d65b3247cce2d6019f11957285d11 # v7
 
       - name: Read version
         id: version
@@ -77,10 +77,10 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@172dff065fb2e54aaed577fd667975cd412819fb # v3
 
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@a0d57b8e43b6ef1cca20559d68cec2227e63fccd # v3
         with:
           registry: ${{ inputs.registry }}
           username: ${{ github.actor }}
@@ -88,7 +88,7 @@ jobs:
 
       - name: Extract metadata (tags, labels)
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@4378dc6be7f72231dfe78ac7e0364a44f1c9f54b # v5
         with:
           images: ${{ inputs.image_name }}
           tags: |
@@ -96,7 +96,7 @@ jobs:
             type=raw,value=latest
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@b66d8774c665b789105b440514f0c97e6f19b06f # v6
         with:
           context: ${{ inputs.context }}
           file: ${{ inputs.dockerfile }}
