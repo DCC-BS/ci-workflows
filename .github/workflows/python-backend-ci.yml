@@ -27,7 +27,7 @@ on:
         description: uv version to install
         required: false
         type: string
-        default: "0.6.2"
+        default: "0.11.3"
       working_directory:
         description: Project directory
         required: false
