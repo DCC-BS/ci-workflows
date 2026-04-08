@@ -65,7 +65,8 @@ jobs:
           uv-version: ${{ inputs.uv_version }}
           working-directory: ${{ inputs.working_directory }}
           uv_extra_packages: ${{ inputs.uv_extra_packages }}
-
+      - name: Install varlock
+        run: curl -sSfL https://varlock.dev/install.sh | sh -s
       - name: Run quality checks
         run: ${{ inputs.check_command }}
 
