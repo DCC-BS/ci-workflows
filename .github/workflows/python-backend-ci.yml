@@ -66,7 +66,10 @@ jobs:
           working-directory: ${{ inputs.working_directory }}
           uv_extra_packages: ${{ inputs.uv_extra_packages }}
       - name: Install varlock
-        run: curl -sSfL https://varlock.dev/install.sh | sh -s
+        shell: bash
+        run: |
+          curl -sSfL https://varlock.dev/install.sh | sh -s
+          export PATH="${XDG_CONFIG_HOME}/varlock/bin:$PATH"
       - name: Run quality checks
         run: ${{ inputs.check_command }}
 
