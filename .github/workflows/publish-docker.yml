@@ -77,7 +77,7 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@172dff065fb2e54aaed577fd667975cd412819fb # v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
       - name: Log in to GHCR
         uses: docker/login-action@a0d57b8e43b6ef1cca20559d68cec2227e63fccd # v3
