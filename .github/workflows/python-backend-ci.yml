@@ -69,8 +69,9 @@ jobs:
         shell: bash
         run: |
           curl -sSfL https://varlock.dev/install.sh | sh -s
-          export PATH="${XDG_CONFIG_HOME}/varlock/bin:$PATH"
+          echo "${XDG_CONFIG_HOME}/varlock/bin" >> $GITHUB_PATH
       - name: Run quality checks
+        shell: bash
         run: ${{ inputs.check_command }}
 
   tests-and-type-check:
