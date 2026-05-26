@@ -63,7 +63,7 @@ jobs:
 
       - name: Setup uv
         if: inputs.project_type == 'python'
-        uses: astral-sh/setup-uv@447e6d02b15d65b3247cce2d6019f11957285d11 # v7
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
 
       - name: Read version
         id: version
