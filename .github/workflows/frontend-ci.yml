@@ -51,7 +51,7 @@ jobs:
       contents: read
     steps:
       - name: Build, Lint, and Test
-        uses: DCC-BS/ci-workflows/actions/node-bun-biome-playwright@814649735835a84a3d0d6c8d6e6db87dfeb8b348 # v1
+        uses: DCC-BS/ci-workflows/actions/node-bun-biome-playwright@e1a0618f8fa90d75f717423a03ea29854beb613b # v1
         with:
           node_version: ${{ inputs.node_version }}
           working_directory: ${{ inputs.working_directory }}
