@@ -115,7 +115,7 @@ runs:
 
     - name: Summarize Playwright report
       if: ${{ always() && inputs.run_playwright == 'true' }}
-      uses: daun/playwright-report-summary@v3
+      uses: daun/playwright-report-summary@v4
       with:
         report-file: results.json
 
