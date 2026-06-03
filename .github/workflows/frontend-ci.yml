@@ -15,6 +15,10 @@ on:
         required: false
         type: string
         default: "true"
+      biome_version:
+        required: false
+        type: string
+        default: "latest"
       run_playwright:
         required: false
         type: string
@@ -56,6 +60,7 @@ jobs:
           node_version: ${{ inputs.node_version }}
           working_directory: ${{ inputs.working_directory }}
           run_biome: ${{ inputs.run_biome }}
+          biome_version: ${{ inputs.biome_version }}
           run_playwright: ${{ inputs.run_playwright }}
           install_method: ${{ inputs.install_method }}
           install_command: ${{ inputs.install_command }}

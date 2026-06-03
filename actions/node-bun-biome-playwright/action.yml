@@ -13,6 +13,10 @@ inputs:
     description: "Run Biome lint/format check"
     required: false
     default: "true"
+  biome_version:
+    description: "Biome version (semver range or 'latest')"
+    required: false
+    default: "latest"
   run_playwright:
     description: "Run Playwright tests"
     required: false
@@ -93,7 +97,7 @@ runs:
       if: ${{ inputs.run_biome == 'true' }}
       uses: biomejs/setup-biome@v2
       with:
-        version: latest
+        version: ${{ inputs.biome_version }}
 
     - name: Biome check
       if: ${{ inputs.run_biome == 'true' }}
