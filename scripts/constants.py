@@ -17,12 +17,24 @@ DIFF_FILTER_PATTERNS: list[str] = [
     ".env.example",
 ]
 
+# Optional user-supplied instructions block. Rendered empty when no custom
+# instructions were passed via the /documentation command.
+CUSTOM_INSTRUCTIONS_TEMPLATE = """
+User Instructions (highest priority — provided by the maintainer who triggered this update):
+{custom_instructions}
+"""
+
 # Triage Prompts
-TRIAGE_SYSTEM_PROMPT = "You are a helpful assistant."
+TRIAGE_SYSTEM_PROMPT = (
+    "You are a technical documentation assistant. You decide whether a code "
+    "change requires an update to a specific documentation file. Answer "
+    'precisely with only "YES" or "NO".'
+)
 TRIAGE_USER_PROMPT_TEMPLATE = """
 You are a technical documentation assistant.
 I have a git diff from a code PR and a markdown documentation file.
 Determine if the changes in the code require an update to this specific documentation file.
+{custom_instructions_section}
 
 Conditions for documentation updates:
 1. New functionality in the diff that is not documented
@@ -31,6 +43,9 @@ Conditions for documentation updates:
 4. Currently undocumented functionality in the diff
 5. Developer-Facing Only: Focus exclusively on changes that affect the public API, configuration, installation, or behavior as experienced by a developer using the library/app.
 6. Ignore Internal Logic: No documentation updates needed for internal refactors, private helper functions, performance optimizations, or logic changes that do not alter the external interface or outcome.
+
+Special Case - Skill Frontmatter:
+If the file's YAML frontmatter contains skillName, skillDescription, or skillParent, it is published as an installable skill for coding agents. An update is also needed if the code changes alter what this page covers such that its skillDescription is now inaccurate.
 
 Special Case - VitePress Config (.vitepress/config.ts or .vitepress/config.mts):
 If the file is a VitePress config file, check if the sidebar navigation needs to be updated based on:
@@ -71,6 +86,7 @@ Input Data:
 
 5. Ambient Context (Other files being updated in this session):
 {ambient_context}
+{custom_instructions_section}
 
 Objectives:
 1. Visibility Filtering:
@@ -88,6 +104,13 @@ VitePress Guidelines:
 - Preserve Frontmatter.
 - Use Custom Containers (::: info, ::: tip, etc.) and Code Groups.
 - Do not use Badges for new features.
+
+Special Case - Skill Frontmatter:
+Some markdown files expose their content as installable "skills" for coding agents via YAML frontmatter. These properties drive skill generation:
+- skillName: the skill (or sub-skill) identifier.
+- skillDescription: a one-line summary of what the skill covers, shown to coding agents.
+- skillParent: links a child sub-skill file to its parent skill (set on the child file).
+When a file already contains any of these properties, check whether the code changes meaningfully alter what the skill covers (its scope, the API/behavior it documents). If so, update skillDescription so it still accurately summarizes the page's content. Do NOT add skill frontmatter to files that do not already have it, do NOT rename skillName or skillParent, and keep all other frontmatter intact.
 
 Special Case - VitePress Config (.vitepress/config.ts or .vitepress/config.mts):
 If the target file is a VitePress config file, it contains the sidebar navigation configuration.
@@ -111,4 +134,34 @@ Constraints:
 
 ---
 Provide the full updated content for {target_path}:
+"""
+
+# Summary Prompts (posted back as a comment on the source PR)
+SUMMARY_SYSTEM_PROMPT = (
+    "You are a documentation assistant summarizing automated documentation "
+    "changes for a pull request comment. Write concise GitHub-flavored "
+    "Markdown."
+)
+SUMMARY_USER_PROMPT_TEMPLATE = """
+An automated documentation update was generated for a documentation site based on a code PR.
+
+Summarize, in a short GitHub PR comment, what was changed in the documentation and why.
+
+Guidelines:
+- Use a brief bullet list, one bullet per updated file: `path` — what changed.
+- Be specific and factual; only describe changes supported by the data below.
+- If the user instructions raise something the diff does not clearly resolve, add a short "Questions" section asking for clarification.
+- Do NOT include a link to the documentation PR; it is added separately.
+- No preamble like "Here is the summary".
+{custom_instructions_section}
+PR Description:
+{pr_description}
+
+Git Diff (Code Changes):
+{diff_text}
+
+Updated documentation files: {updated_paths}
+
+Doc changes (unified diffs):
+{doc_diffs}
 """
