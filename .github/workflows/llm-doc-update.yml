@@ -24,12 +24,21 @@ on:
         required: true
         type: string
         description: "PR number to analyze."
+      custom_instructions:
+        required: false
+        type: string
+        default: ""
+        description: "Optional free-text instructions from the /documentation command."
+      app_id:
+        required: true
+        type: string
+        description: "GitHub App ID used to mint an installation token."
     secrets:
       OPENAI_API_KEY:
         required: true
-      GH_TOKEN:
+      APP_PRIVATE_KEY:
         required: true
-        description: "Token with write access to doc_repo"
+        description: "Private key (PEM) of the GitHub App identified by app_id."
 
 jobs:
   llm-update:
@@ -55,13 +64,40 @@ jobs:
         run: |
           pip install -r ci-workflows/scripts/requirements.txt
 
+      # Resolve the owner and repo names, and ensure source + doc share an owner
+      # (a single GitHub App installation token cannot span different owners).
+      - name: Resolve app token scope
+        id: scope
+        env:
+          SRC: ${{ github.repository }}
+          DOC: ${{ inputs.doc_repo }}
+        run: |
+          SRC_OWNER="${SRC%%/*}"; SRC_NAME="${SRC#*/}"
+          DOC_OWNER="${DOC%%/*}"; DOC_NAME="${DOC#*/}"
+          if [ "$SRC_OWNER" != "$DOC_OWNER" ]; then
+            echo "::error::Source ($SRC_OWNER) and doc ($DOC_OWNER) repos have different owners; a single GitHub App token cannot span owners."
+            exit 1
+          fi
+          echo "owner=$SRC_OWNER" >> "$GITHUB_OUTPUT"
+          echo "repositories=$SRC_NAME,$DOC_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Mint GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ inputs.app_id }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ steps.scope.outputs.owner }}
+          repositories: ${{ steps.scope.outputs.repositories }}
+
       - name: Run LLM Doc Updater
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: ${{ inputs.openai_model }}
           OPENAI_BASE_URL: ${{ inputs.openai_base_url }}
           PR_NUMBER: ${{ inputs.pr_number }}
+          CUSTOM_INSTRUCTIONS: ${{ inputs.custom_instructions }}
         run: |
           # Determine PR Number
           PR_NUM="${PR_NUMBER}"
@@ -81,4 +117,5 @@ jobs:
             --source-repo "$SRC_REPO" \
             --doc-repo "${{ inputs.doc_repo }}" \
             --doc-path "${{ inputs.doc_path }}" \
-            --repo-path "."
+            --repo-path "." \
+            --custom-instructions "$CUSTOM_INSTRUCTIONS"

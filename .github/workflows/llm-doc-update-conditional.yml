@@ -22,15 +22,43 @@ on:
         required: true
         type: string
         description: "PR number to analyze."
+      app_id:
+        required: true
+        type: string
+        description: "GitHub App ID used to mint an installation token."
     secrets:
       OPENAI_API_KEY:
         required: true
-      GH_TOKEN:
+      APP_PRIVATE_KEY:
         required: true
+        description: "Private key (PEM) of the GitHub App identified by app_id."
 
 jobs:
+  # Parse the triggering comment: accept "/documentation" optionally followed by
+  # free-text custom instructions, and extract that text.
+  parse-comment:
+    if: ${{ github.event.comment && startsWith(github.event.comment.body, '/documentation') && github.event.issue && github.event.issue.pull_request }}
+    runs-on: ubuntu-latest
+    outputs:
+      custom_instructions: ${{ steps.parse.outputs.custom_instructions }}
+    steps:
+      - name: Extract custom instructions
+        id: parse
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          # Strip the leading "/documentation" token; the remainder (trimmed,
+          # surrounding quotes removed) becomes the custom instructions.
+          INSTR="${COMMENT_BODY#/documentation}"
+          INSTR="$(printf '%s' "$INSTR" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/^"//' -e 's/"$//')"
+          {
+            echo "custom_instructions<<EOF"
+            printf '%s\n' "$INSTR"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
   check-and-update:
-    if: ${{ github.event.comment && github.event.comment.body == '/documentation' && github.event.issue && github.event.issue.pull_request }}
+    needs: parse-comment
     uses: ./.github/workflows/llm-doc-update.yml
     with:
       doc_repo: ${{ inputs.doc_repo }}
@@ -38,6 +66,8 @@ jobs:
       openai_model: ${{ inputs.openai_model }}
       openai_base_url: ${{ inputs.openai_base_url }}
       pr_number: ${{ inputs.pr_number }}
+      app_id: ${{ inputs.app_id }}
+      custom_instructions: ${{ needs.parse-comment.outputs.custom_instructions }}
     secrets:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      GH_TOKEN: ${{ secrets.GH_TOKEN }}
+      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}

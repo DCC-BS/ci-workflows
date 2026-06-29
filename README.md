@@ -1,20 +1,23 @@
 # DCC-BS CI Workflows
 
-Reusable GitHub Actions (workflows + composite actions) to standardize CI for Node/Bun/Playwright frontends and GHCR Docker publishing across repositories.
+Reusable GitHub Actions (workflows + composite actions) to standardize CI across repositories: Node/Bun/Playwright frontends, uv-based Python backends, GHCR Docker and npm publishing, and LLM-assisted documentation updates.
 
 ## Contents
 - `actions/`
   - `bump-version/` — Composite action to bump `package.json` semver, commit, tag, and push.
   - `node-bun-biome-playwright/` — Composite action to checkout, set up Node + Bun, run build, Biome, Playwright, and upload report.
+  - `setup-python-env/` — Composite action to install Python and `uv` and sync dependencies.
 - `.github/workflows/`
   - `frontend-ci.yml` — Reusable end‑to‑end Build & Test workflow (calls `node-bun-biome-playwright`).
   - `python-backend-ci.yml` — Reusable uv-based backend checks + matrix runner.
   - `publish-docker.yml` — Reusable Docker publish workflow for GHCR (calls `bump-version`).
   - `npm-publish.yml` — Reusable workflow to bump, build, and publish npm packages.
+  - `llm-doc-update.yml` — Reusable workflow that drafts documentation updates from a PR diff using an LLM.
+  - `llm-doc-update-conditional.yml` — Wrapper that runs `llm-doc-update.yml` when a PR is commented with `/documentation`.
 
 ## Usage
 
-Pin to the major version `v1` for safe updates.
+Pin to the major version `v9` for safe updates.
 
 ### Frontend CI (Build & Test)
 
@@ -151,49 +154,54 @@ jobs:
       publish_command: bun publish --access public
 ```
 
-### Publish Package to PyPI
-
-Reusable workflow to build, tag, and publish a package using `uv`. Requires `id-token: write` permission for Trusted Publishing (or configured secrets if not using OIDC, though this workflow assumes Trusted Publishing by default for permissions).
-
-- `python_version` — Python version to use (default: `"3.12"`)
-- `uv_version` — Version of uv to install (default: `"latest"`)
-- `create_release_tag` — Whether to create and push a git tag based on the version (default: `true`)
-- `install_command`, `build_command`, `publish_command` — Override default commands.
-
-Example usage:
-
-```yaml
-name: Publish to PyPI
-on:
-  workflow_dispatch:
-
-jobs:
-  publish:
-    uses: DCC-BS/ci-workflows/.github/workflows/pypi-publish.yml@v1
-    permissions:
-      id-token: write
-      contents: write
-    with:
-      python_version: "3.12"
-      create_release_tag: true
-```
-
 ### LLM Documentation Auto-Updater
 
 Reusable workflow to automatically check if a PR requires documentation updates using an LLM (OpenAI). If updates are needed, it creates a PR in the documentation repository.
 
 - `doc_repo` — Owner/Name of the target documentation repository.
 - `doc_path` — Path to markdown files in the doc repo.
-- `pr_number` — (Optional) PR number to analyze. Inferred from context if missing.
-- `source_repo` — (Optional) Source repository. Inferred from context if missing.
+- `pr_number` — PR number to analyze. The source repository is taken from `github.repository`.
 - `openai_model` — (Optional) Model to use (default: `gpt-4o`).
 - `openai_base_url` — (Optional) Custom OpenAI Base URL.
+- `app_id` — GitHub App ID used to mint a short-lived installation token (see below).
+- `custom_instructions` — (Optional) Free-text instructions injected into the LLM prompts. Usually set automatically from the `/documentation` comment (see below).
+
+#### Triggering via PR comment
+
+Use the conditional workflow (`llm-doc-update-conditional.yml`) on the `issue_comment` event. Comment on a PR with:
+
+```
+/documentation
+```
+
+You may append custom instructions in the same comment to steer the update and converse across runs:
+
+```
+/documentation "Make sure the documentation reflects the updated API."
+```
+
+The text after `/documentation` is added to a dedicated, high-priority section of the prompts. After running, the workflow comments back on the source PR with a summary of the documentation changes (and any clarifying questions) plus a link to the documentation PR. A single documentation PR is reused per source PR, so follow-up `/documentation` comments refine the same PR — enabling an iterative, comment-driven loop.
 
 Secrets required:
 - `OPENAI_API_KEY`: API key for OpenAI.
-- `GH_TOKEN`: Personal Access Token (PAT) with write access to the documentation repository.
+- `APP_PRIVATE_KEY`: Private key (PEM) of the GitHub App (see setup below).
 
-Example usage:
+#### Authentication: GitHub App
+
+The workflow mints a short-lived installation token from a GitHub App, scoped to exactly the source and documentation repositories. One-time setup:
+
+1. Create a GitHub App (org **Settings → Developer settings → GitHub Apps → New**). Disable Webhook.
+2. Grant **Repository permissions**:
+   - Contents: **Read and write**
+   - Pull requests: **Read and write**
+   - Issues: **Read and write** (used to post status comments back on the source PR)
+3. **Install** the App on both the source repo(s) and the documentation repo. They must share the same owner/org — a single installation token cannot span owners.
+4. Generate a **private key** (PEM) and note the **App ID**.
+5. Store the private key as the `APP_PRIVATE_KEY` Actions secret, and pass the App ID via the `app_id` input.
+
+> **Note:** For DCC-BS this is already configured at the **organization** level (Org → Settings → Secrets and variables → Actions): the App private key is the org secret `APP_PRIVATE_KEY` and the App ID is the org variable `DOC_APP_ID`. Consumer repos in the org can reference them directly (as in the examples below) without any per-repo setup.
+
+Example usage (auto-trigger):
 
 ```yaml
 name: Sync Documentation
@@ -210,9 +218,33 @@ jobs:
       doc_repo: "DCC-BS/documentation"
       doc_path: "docs/relevant-section"
       openai_model: "gpt-4-turbo"
+      app_id: ${{ vars.DOC_APP_ID }}
     secrets:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      GH_TOKEN: ${{ secrets.DOC_REPO_PAT }}
+      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+```
+
+Example usage (`/documentation` comment trigger):
+
+Use `llm-doc-update-conditional.yml` on the `issue_comment` event. It only runs when the comment starts with `/documentation`, and supplies the PR number from the comment's issue.
+
+```yaml
+name: Documentation on demand
+on:
+  issue_comment:
+    types: [ created ]
+
+jobs:
+  docs:
+    uses: DCC-BS/ci-workflows/.github/workflows/llm-doc-update-conditional.yml@v1
+    with:
+      doc_repo: "DCC-BS/documentation"
+      doc_path: "docs/relevant-section"
+      pr_number: ${{ github.event.issue.number }}
+      app_id: ${{ vars.DOC_APP_ID }}
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
 ```
 
 ## Versioning
