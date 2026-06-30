@@ -163,7 +163,7 @@ Reusable workflow to automatically check if a PR requires documentation updates 
 - `pr_number` — PR number to analyze. The source repository is taken from `github.repository`.
 - `openai_model` — (Optional) Model to use (default: `gpt-4o`).
 - `openai_base_url` — (Optional) Custom OpenAI Base URL.
-- `app_id` — GitHub App ID used to mint a short-lived installation token (see below).
+- `client_id` — GitHub App ID used to mint a short-lived installation token (see below).
 - `custom_instructions` — (Optional) Free-text instructions injected into the LLM prompts. Usually set automatically from the `/documentation` comment (see below).
 
 #### Triggering via PR comment
@@ -184,7 +184,7 @@ The text after `/documentation` is added to a dedicated, high-priority section o
 
 Secrets required:
 - `OPENAI_API_KEY`: API key for OpenAI.
-- `APP_PRIVATE_KEY`: Private key (PEM) of the GitHub App (see setup below).
+- `DOC_APP_PRIVATE_KEY`: Private key (PEM) of the GitHub App (see setup below).
 
 #### Authentication: GitHub App
 
@@ -197,9 +197,9 @@ The workflow mints a short-lived installation token from a GitHub App, scoped to
    - Issues: **Read and write** (used to post status comments back on the source PR)
 3. **Install** the App on both the source repo(s) and the documentation repo. They must share the same owner/org — a single installation token cannot span owners.
 4. Generate a **private key** (PEM) and note the **App ID**.
-5. Store the private key as the `APP_PRIVATE_KEY` Actions secret, and pass the App ID via the `app_id` input.
+5. Store the private key as the `DOC_APP_PRIVATE_KEY` Actions secret, and pass the App ID via the `client_id` input.
 
-> **Note:** For DCC-BS this is already configured at the **organization** level (Org → Settings → Secrets and variables → Actions): the App private key is the org secret `APP_PRIVATE_KEY` and the App ID is the org variable `DOC_APP_ID`. Consumer repos in the org can reference them directly (as in the examples below) without any per-repo setup.
+> **Note:** For DCC-BS this is already configured at the **organization** level (Org → Settings → Secrets and variables → Actions): the App private key is the org secret `DOC_APP_PRIVATE_KEY` and the App ID is the org variable `DOC_client_id`. Consumer repos in the org can reference them directly (as in the examples below) without any per-repo setup.
 
 Example usage (auto-trigger):
 
@@ -218,10 +218,10 @@ jobs:
       doc_repo: "DCC-BS/documentation"
       doc_path: "docs/relevant-section"
       openai_model: "gpt-4-turbo"
-      app_id: ${{ vars.DOC_APP_ID }}
+      client_id: ${{ vars.DOC_client_id }}
     secrets:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+      DOC_APP_PRIVATE_KEY: ${{ secrets.DOC_APP_PRIVATE_KEY }}
 ```
 
 Example usage (`/documentation` comment trigger):
@@ -241,10 +241,10 @@ jobs:
       doc_repo: "DCC-BS/documentation"
       doc_path: "docs/relevant-section"
       pr_number: ${{ github.event.issue.number }}
-      app_id: ${{ vars.DOC_APP_ID }}
+      client_id: ${{ vars.DOC_client_id }}
     secrets:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+      DOC_APP_PRIVATE_KEY: ${{ secrets.DOC_APP_PRIVATE_KEY }}
 ```
 
 ## Versioning
