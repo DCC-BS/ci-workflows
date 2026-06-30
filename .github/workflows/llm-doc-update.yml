@@ -99,10 +99,7 @@ jobs:
           PR_NUMBER: ${{ inputs.pr_number }}
           CUSTOM_INSTRUCTIONS: ${{ inputs.custom_instructions }}
         run: |
-          # Determine PR Number
           PR_NUM="${PR_NUMBER}"
-
-          # Determine Source Repo
           SRC_REPO="${{ github.repository }}"
 
           if [ -z "$PR_NUM" ] || [ "$PR_NUM" == "null" ]; then

@@ -61,10 +61,7 @@ def strip_code_fences(text):
 
 
 def get_local_git_diff(gh, repo_name, pr_number, repo_path="."):
-    # We assume the current working directory is the source repo (checked out by actions/checkout)
-    # We need to know the base branch to diff against.
-
-    # Verify repo_path
+    # Assumes repo_path is the source repo checked out by actions/checkout.
     if not os.path.isdir(os.path.join(repo_path, ".git")):
         print(f"Error: {repo_path} is not a valid git repository.")
         sys.exit(1)
@@ -78,13 +75,12 @@ def get_local_git_diff(gh, repo_name, pr_number, repo_path="."):
     print(f"Base branch is: {base_ref}")
     print(f"Head SHA is: {head_sha}")
 
-    # Ensure we have the base ref fetched
     try:
         print(f"Fetching origin/{base_ref}...")
         subprocess.check_call(["git", "fetch", "origin", base_ref], cwd=repo_path)
     except subprocess.CalledProcessError as e:
         print(f"Warning: Error fetching base branch {base_ref}: {e}")
-        # Verify the base ref exists locally before continuing
+        # Fetch can fail when the ref is already present locally; fall back to it.
         try:
             subprocess.check_call(
                 ["git", "rev-parse", "--verify", f"origin/{base_ref}"],
@@ -98,7 +94,6 @@ def get_local_git_diff(gh, repo_name, pr_number, repo_path="."):
                 f"Error: Base ref origin/{base_ref} does not exist locally and fetch failed."
             )
             sys.exit(1)
-    # Fetch the PR head explicitly
     try:
         print(f"Fetching PR head (pull/{pr_number}/head)...")
         subprocess.check_call(
@@ -110,7 +105,6 @@ def get_local_git_diff(gh, repo_name, pr_number, repo_path="."):
 
     print(f"Generating diff between origin/{base_ref} and FETCH_HEAD...")
     try:
-        # Diff origin/{base_ref} against the fetched PR head (FETCH_HEAD)
         result = subprocess.run(
             [
                 "git",
@@ -143,7 +137,6 @@ def get_vitepress_config(repo):
         print(f"Found VitePress config at {vitepress_config_path}")
         return {vitepress_config_path: content}
     except GithubException:
-        # Try .mts extension as alternative
         vitepress_config_path = ".vitepress/config.mts"
         try:
             config_file = repo.get_contents(vitepress_config_path)
@@ -160,7 +153,6 @@ def get_doc_files(gh, doc_repo_name, doc_path):
     repo = gh.get_repo(doc_repo_name)
     files_content = {}
 
-    # Always check for VitePress config and include it if present
     vitepress_config = get_vitepress_config(repo)
     files_content.update(vitepress_config)
 
@@ -176,7 +168,6 @@ def get_doc_files(gh, doc_repo_name, doc_path):
             contents.extend(repo.get_contents(file_content.path))
         else:
             if file_content.path.endswith(".md"):
-                # Decode content
                 try:
                     files_content[file_content.path] = (
                         file_content.decoded_content.decode("utf-8")
@@ -263,7 +254,6 @@ def call_openai_update(
 
         new_content = strip_code_fences(get_message_content(response))
 
-        # Basic check to ensure we didn't just get nothing
         if new_content and new_content != target_content:
             updates[target_path] = new_content
             print(f"    -> Generated updates for {target_path}")
@@ -423,7 +413,6 @@ def main():
     source_repo = args.source_repo
     source_pr = int(args.source_pr)
 
-    # Secrets from env
     gh_token = os.environ.get("GH_TOKEN")
     openai_key = os.environ.get("OPENAI_API_KEY")
 

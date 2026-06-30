@@ -39,9 +39,25 @@ jobs:
   parse-comment:
     if: ${{ github.event.comment && startsWith(github.event.comment.body, '/documentation') && github.event.issue && github.event.issue.pull_request }}
     runs-on: ubuntu-latest
+    permissions:
+      issues: write          # react to / comment on the triggering PR comment
+      pull-requests: write
     outputs:
       custom_instructions: ${{ steps.parse.outputs.custom_instructions }}
     steps:
+      # Immediately acknowledge the command with a 👀 reaction so the user
+      # knows the run started. Best-effort: never fail the run over a reaction.
+      - name: Acknowledge command with 👀
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+        run: |
+          gh api -X POST \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${{ github.repository }}/issues/comments/${COMMENT_ID}/reactions" \
+            -f content=eyes
+
       - name: Extract custom instructions
         id: parse
         env:
