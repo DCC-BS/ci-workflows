@@ -22,16 +22,16 @@ on:
         required: true
         type: string
         description: "PR number to analyze."
-      app_id:
+      client_id:
         required: true
         type: string
         description: "GitHub App ID used to mint an installation token."
     secrets:
       OPENAI_API_KEY:
         required: true
-      APP_PRIVATE_KEY:
+      DOC_APP_PRIVATE_KEY:
         required: true
-        description: "Private key (PEM) of the GitHub App identified by app_id."
+        description: "Private key (PEM) of the GitHub App identified by client_id."
 
 jobs:
   # Parse the triggering comment: accept "/documentation" optionally followed by
@@ -66,8 +66,8 @@ jobs:
       openai_model: ${{ inputs.openai_model }}
       openai_base_url: ${{ inputs.openai_base_url }}
       pr_number: ${{ inputs.pr_number }}
-      app_id: ${{ inputs.app_id }}
+      client_id: ${{ inputs.client_id }}
       custom_instructions: ${{ needs.parse-comment.outputs.custom_instructions }}
     secrets:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+      DOC_APP_PRIVATE_KEY: ${{ secrets.DOC_APP_PRIVATE_KEY }}

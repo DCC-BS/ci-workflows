@@ -29,16 +29,16 @@ on:
         type: string
         default: ""
         description: "Optional free-text instructions from the /documentation command."
-      app_id:
+      client_id:
         required: true
         type: string
         description: "GitHub App ID used to mint an installation token."
     secrets:
       OPENAI_API_KEY:
         required: true
-      APP_PRIVATE_KEY:
+      DOC_APP_PRIVATE_KEY:
         required: true
-        description: "Private key (PEM) of the GitHub App identified by app_id."
+        description: "Private key (PEM) of the GitHub App identified by client_id."
 
 jobs:
   llm-update:
@@ -85,8 +85,8 @@ jobs:
         id: app-token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
-          app-id: ${{ inputs.app_id }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          client-id: ${{ inputs.client_id }}
+          private-key: ${{ secrets.DOC_APP_PRIVATE_KEY }}
           owner: ${{ steps.scope.outputs.owner }}
           repositories: ${{ steps.scope.outputs.repositories }}
 
