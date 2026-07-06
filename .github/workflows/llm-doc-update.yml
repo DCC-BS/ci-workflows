@@ -107,7 +107,7 @@ jobs:
              exit 1
           fi
 
-          echo "Running Doc Updater for PR #$PR_NUM in $SRC_REPO against $DOC_REPO/$DOC_PATH..."
+          echo "Running Doc Updater for PR #$PR_NUM in $SRC_REPO against ${{ inputs.doc_repo }}/${{ inputs.doc_path }}..."
 
           python ci-workflows/scripts/llm_doc_updater.py \
             --source-pr "$PR_NUM" \
