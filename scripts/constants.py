@@ -6,6 +6,8 @@ MAX_DOC_CONTEXT_CHARS = 50000
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o")
 OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL")
 PR_BRANCH_PREFIX = "doc-update-pr"
+# Sentinel the update model returns when a doc file should be deleted entirely.
+DELETE_FILE_MARKER = "__DELETE_FILE__"
 DIFF_FILTER_PATTERNS: list[str] = [
     "**/*.py",
     "**/*.ts",
@@ -43,6 +45,10 @@ Conditions for documentation updates:
 4. Currently undocumented functionality in the diff
 5. Developer-Facing Only: Focus exclusively on changes that affect the public API, configuration, installation, or behavior as experienced by a developer using the library/app.
 6. Ignore Internal Logic: No documentation updates needed for internal refactors, private helper functions, performance optimizations, or logic changes that do not alter the external interface or outcome.
+7. User Instructions Override: If the User Instructions above explicitly ask for a change to this specific file (rewording, restructuring, removing references, or deleting the file entirely), answer "YES" even if the code diff alone would not require it.
+8. Deletion counts as an update: if the functionality this file documents was fully removed, or the User Instructions request removing this file, answer "YES".
+
+Note: the documentation content shown below may already include changes from earlier automated update rounds on an open documentation PR. Answer "NO" if the file already fully reflects the code changes and the User Instructions.
 
 Special Case - Skill Frontmatter:
 If the file's YAML frontmatter contains skillName, skillDescription, or skillParent, it is published as an installable skill for coding agents. An update is also needed if the code changes alter what this page covers such that its skillDescription is now inaccurate.
@@ -97,8 +103,10 @@ Objectives:
 - Handle Removals: If functionality is removed in the diff, delete the corresponding documentation.
 - Handle Changes: Update behavior, signatures, or configuration to reflect the current state.
 - Handle Additions: Add new public-facing features or parameters if they belong in this specific file.
+- Handle Whole-File Deletion: If this entire file should no longer exist (the functionality it documents was fully removed, or the User Instructions explicitly request deleting it), respond with exactly `__DELETE_FILE__` and nothing else.
 - PREVENT DUPLICATION: Use the 'Ambient Context' to see what other files are being updated. If a change more naturally belongs in one of those files, do NOT document it here.
 - Preserve unrelated content and tone.
+- Iterative Updates: The current content may already include changes from earlier automated update rounds on an open documentation PR. Apply the User Instructions and code changes ON TOP of the current content; do not undo earlier changes unless instructed. If the file already fully reflects everything, return the current content unchanged.
 
 VitePress Guidelines:
 - Preserve Frontmatter.
@@ -148,11 +156,12 @@ An automated documentation update was generated for a documentation site based o
 Summarize, in a short GitHub PR comment, what was changed in the documentation and why.
 
 Guidelines:
-- Use a brief bullet list, one bullet per updated file: `path` — what changed.
+- Use a brief bullet list, one bullet per updated file: `path` — what changed. Mark deleted files as deleted.
 - Be specific and factual; only describe changes supported by the data below.
 - If the user instructions raise something the diff does not clearly resolve, add a short "Questions" section asking for clarification.
 - Do NOT include a link to the documentation PR; it is added separately.
-- No preamble like "Here is the summary".
+- No preamble like "Here is the summary" and no "Documentation updated" header; a header is added separately.
+- Do NOT repeat or quote text from the user instructions (they may contain quoted earlier bot comments).
 {custom_instructions_section}
 PR Description:
 {pr_description}
