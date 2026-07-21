@@ -6,6 +6,8 @@ MAX_DOC_CONTEXT_CHARS = 50000
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o")
 OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL")
 PR_BRANCH_PREFIX = "doc-update-pr"
+# Upper bound on brand-new pages proposed per run, to cap runaway creation.
+MAX_NEW_DOCS = 5
 # Sentinel the update model returns when a doc file should be deleted entirely.
 DELETE_FILE_MARKER = "__DELETE_FILE__"
 DIFF_FILTER_PATTERNS: list[str] = [
@@ -173,4 +175,137 @@ Updated documentation files: {updated_paths}
 
 Doc changes (unified diffs):
 {doc_diffs}
+"""
+
+# Propose-New-Pages Prompts
+# Decide whether the diff introduces functionality that no existing page covers
+# and therefore warrants an entirely new documentation page.
+PROPOSE_NEW_DOCS_SYSTEM_PROMPT = (
+    "You are a technical documentation architect. You decide whether a code "
+    "change introduces functionality not covered by any existing documentation "
+    "page and therefore warrants an entirely new page. You respond only with JSON."
+)
+PROPOSE_NEW_DOCS_USER_PROMPT_TEMPLATE = """
+You are planning documentation changes for a VitePress site.
+
+A code PR introduced changes. Below you have the git diff, the PR description,
+the list of existing documentation pages (paths), and the VitePress config
+(sidebar/nav structure).
+{custom_instructions_section}
+
+Decide whether the code changes introduce public-facing functionality (a new
+feature, module, command, endpoint, or configuration surface) that does NOT
+belong on any existing page and is significant enough to deserve its own new
+documentation page.
+
+Rules:
+- Propose a new page ONLY when the topic does not fit an existing page. If an
+  existing page should merely be extended, do NOT propose a new file for it.
+- Every proposed path MUST live under the documentation directory "{doc_path}",
+  use a URL-friendly kebab-case filename, and end with ".md".
+- Do NOT propose a path that already exists in the list below.
+- Base every proposal strictly on the diff/PR; do not speculate.
+- Propose at most {max_new_docs} new pages. Prefer none over a weak fit.
+- If the User Instructions explicitly request a new page, honor that.
+
+Return ONLY a JSON array (no prose, no code fences). Each element:
+{{"path": "<path under {doc_path} ending in .md>", "title": "<page title>", "reason": "<one line why a new page is warranted>"}}
+If no new page is warranted, return exactly: []
+
+PR Description:
+{pr_description}
+
+Git Diff:
+{diff_text}
+
+Existing documentation pages:
+{existing_paths}
+
+VitePress config:
+{vitepress_config}
+"""
+
+# Create-New-Page Prompts
+CREATE_DOC_SYSTEM_PROMPT = (
+    "You are an expert Technical Writer specialized in VitePress documentation. "
+    "You write a brand-new documentation page from scratch based on code changes."
+)
+CREATE_DOC_USER_PROMPT_TEMPLATE = """
+Role
+You are an expert Technical Writer specialized in VitePress documentation.
+Write a brand-new documentation page.
+
+New Page Path: {target_path}
+Intended Page Title: {title}
+Why this page exists: {reason}
+
+PR Description:
+{pr_description}
+
+Git Diff (Code Changes):
+{diff_text}
+
+Ambient Context (existing documentation pages, for style and cross-references):
+{ambient_context}
+{custom_instructions_section}
+
+Objectives:
+- Document ONLY the public-facing functionality introduced by the diff that
+  belongs on this page. Do not speculate beyond the code changes.
+- Match the tone, structure, and conventions of the existing pages shown above.
+- Start with a VitePress frontmatter block only if existing pages use one;
+  otherwise start with a top-level "# {title}" heading.
+- Use VitePress-flavored Markdown: custom containers (::: info, ::: tip), code
+  groups, and fenced code blocks with language tags.
+- Do NOT add skill frontmatter (skillName/skillDescription/skillParent).
+
+Constraints:
+- Return ONLY the raw Markdown content for {target_path}.
+- No preamble, no meta-commentary, no triple-backtick wrapper around the whole response.
+
+Provide the full content for {target_path}:
+"""
+
+# VitePress-Navigation Prompts
+# Add sidebar/nav entries for newly created pages and fix entries for renamed or
+# removed pages. The config file lives above the documentation subdirectory.
+CONFIG_UPDATE_SYSTEM_PROMPT = (
+    "You are an expert in VitePress site configuration. You update the sidebar "
+    "and nav in a VitePress config file. You return only the raw TypeScript "
+    "file content."
+)
+CONFIG_UPDATE_USER_PROMPT_TEMPLATE = """
+Role
+You maintain the navigation of a VitePress documentation site by editing its
+config file.
+
+Config File Path: {config_path}
+Current Config Content:
+---
+{config_content}
+---
+
+{new_docs_section}
+PR Description:
+{pr_description}
+
+Git Diff (Code Changes):
+{diff_text}
+{custom_instructions_section}
+
+Objectives:
+- Add sidebar/nav entries for the newly created pages listed above (if any),
+  placing them in the most sensible existing section. Infer the correct link
+  format (base path, no ".md" extension, leading slash) from the existing
+  entries in this config.
+- Update or remove sidebar/nav entries for pages that the diff renamed or removed.
+- If no navigation change is warranted, return the config content unchanged.
+
+Constraints:
+- Preserve the existing TypeScript structure, imports, and formatting; only
+  modify the sidebar/nav sections.
+- The file must remain valid TypeScript. Do NOT wrap the content in markdown.
+- Return ONLY the raw TypeScript file content. No markdown fences, no preamble.
+
+Provide the full updated content for {config_path}:
 """

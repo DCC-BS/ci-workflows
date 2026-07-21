@@ -1,5 +1,6 @@
 import argparse
 import difflib
+import json
 import os
 import re
 import subprocess
@@ -7,14 +8,21 @@ import sys
 
 import github
 from constants import (
+    CONFIG_UPDATE_SYSTEM_PROMPT,
+    CONFIG_UPDATE_USER_PROMPT_TEMPLATE,
+    CREATE_DOC_SYSTEM_PROMPT,
+    CREATE_DOC_USER_PROMPT_TEMPLATE,
     CUSTOM_INSTRUCTIONS_TEMPLATE,
     DELETE_FILE_MARKER,
     DIFF_FILTER_PATTERNS,
     MAX_DIFF_CHARS,
     MAX_DOC_CONTEXT_CHARS,
+    MAX_NEW_DOCS,
     OPENAI_BASE_URL,
     OPENAI_MODEL,
     PR_BRANCH_PREFIX,
+    PROPOSE_NEW_DOCS_SYSTEM_PROMPT,
+    PROPOSE_NEW_DOCS_USER_PROMPT_TEMPLATE,
     SUMMARY_SYSTEM_PROMPT,
     SUMMARY_USER_PROMPT_TEMPLATE,
     TRIAGE_SYSTEM_PROMPT,
@@ -59,6 +67,32 @@ def strip_code_fences(text):
     if lines and lines[-1].strip().startswith("```"):
         lines = lines[:-1]
     return "\n".join(lines)
+
+
+def is_vitepress_config(path):
+    """True for the VitePress config file (lives above the doc subdir)."""
+    return path.endswith(".vitepress/config.ts") or path.endswith(
+        ".vitepress/config.mts"
+    )
+
+
+def parse_json_array(text):
+    """Best-effort parse of a JSON array from a model response."""
+    cleaned = strip_code_fences(text).strip()
+    if not cleaned:
+        return []
+    try:
+        data = json.loads(cleaned)
+    except json.JSONDecodeError:
+        # Model wrapped the array in prose; grab the first [...] block.
+        match = re.search(r"\[.*\]", cleaned, re.DOTALL)
+        if not match:
+            return []
+        try:
+            data = json.loads(match.group(0))
+        except json.JSONDecodeError:
+            return []
+    return data if isinstance(data, list) else []
 
 
 def get_local_git_diff(gh, repo_name, pr_number, repo_path="."):
@@ -257,6 +291,162 @@ def call_openai_update(
         else:
             print(f"    -> No changes generated for {target_path}")
 
+    return updates
+
+
+def normalize_new_doc_proposals(proposals, doc_path, existing_paths):
+    """Validate/clean model-proposed new pages.
+
+    Drops malformed entries, forces paths under doc_path, de-dups against
+    existing pages and each other, and caps the count.
+    """
+    normalized = []
+    seen = set()
+    existing = set(existing_paths)
+    prefix = doc_path.strip("/")
+    for item in proposals:
+        if not isinstance(item, dict):
+            continue
+        path = (item.get("path") or "").strip().lstrip("/")
+        if not path or not path.endswith(".md"):
+            continue
+        # Keep the page inside the documentation directory; if the model put it
+        # elsewhere, relocate just the filename under doc_path.
+        if prefix and not (path == prefix or path.startswith(prefix + "/")):
+            path = f"{prefix}/{path.rsplit('/', 1)[-1]}"
+        if path in existing or path in seen:
+            continue
+        seen.add(path)
+        normalized.append(
+            {
+                "path": path,
+                "title": (item.get("title") or path.rsplit("/", 1)[-1][:-3]).strip(),
+                "reason": (item.get("reason") or "").strip(),
+            }
+        )
+        if len(normalized) >= MAX_NEW_DOCS:
+            break
+    return normalized
+
+
+def call_openai_propose_new_docs(
+    client,
+    diff_text,
+    pr_description,
+    existing_paths,
+    vitepress_config,
+    doc_path,
+    custom_instructions="",
+):
+    """Ask the model whether the diff warrants entirely new documentation pages."""
+    print("Checking whether the changes warrant entirely new documentation pages...")
+    custom_section = render_custom_instructions(custom_instructions)
+    config_blob = (
+        "\n\n".join(f"--- {p} ---\n{c}" for p, c in vitepress_config.items())
+        or "No VitePress config found."
+    )
+    prompt = PROPOSE_NEW_DOCS_USER_PROMPT_TEMPLATE.format(
+        diff_text=diff_text[:MAX_DIFF_CHARS],
+        pr_description=pr_description or "No description provided.",
+        existing_paths="\n".join(sorted(existing_paths)) or "(none)",
+        vitepress_config=config_blob[:MAX_DOC_CONTEXT_CHARS],
+        doc_path=doc_path,
+        max_new_docs=MAX_NEW_DOCS,
+        custom_instructions_section=custom_section,
+    )
+    response = client.chat.completions.create(
+        model=OPENAI_MODEL,
+        messages=[
+            {"role": "system", "content": PROPOSE_NEW_DOCS_SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ],
+    )
+    proposals = parse_json_array(get_message_content(response))
+    return normalize_new_doc_proposals(proposals, doc_path, existing_paths)
+
+
+def call_openai_create_new_docs(
+    client, diff_text, pr_description, new_docs, ambient_files, custom_instructions=""
+):
+    """Generate the full content for each proposed brand-new page."""
+    if not new_docs:
+        return {}
+    print(f"Generating {len(new_docs)} new documentation page(s)...")
+    custom_section = render_custom_instructions(custom_instructions)
+
+    ambient_context = ""
+    for path, content in ambient_files.items():
+        ambient_context += f"\n--- FILE: {path} ---\n{content}\n\n"
+
+    created = {}
+    for nd in new_docs:
+        print(f"  Creating {nd['path']}...")
+        prompt = CREATE_DOC_USER_PROMPT_TEMPLATE.format(
+            target_path=nd["path"],
+            title=nd["title"],
+            reason=nd["reason"] or "n/a",
+            diff_text=diff_text[:MAX_DIFF_CHARS],
+            pr_description=pr_description or "No description provided.",
+            ambient_context=ambient_context[:MAX_DOC_CONTEXT_CHARS],
+            custom_instructions_section=custom_section,
+        )
+        response = client.chat.completions.create(
+            model=OPENAI_MODEL,
+            messages=[
+                {"role": "system", "content": CREATE_DOC_SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ],
+        )
+        content = strip_code_fences(get_message_content(response))
+        if content.strip():
+            created[nd["path"]] = content
+            print(f"    -> Generated new page {nd['path']}")
+        else:
+            print(f"    -> Model returned empty content for {nd['path']}; skipping")
+    return created
+
+
+def call_openai_update_vitepress_config(
+    client, config_files, new_docs, diff_text, pr_description, custom_instructions=""
+):
+    """Update the VitePress config's nav/sidebar for new/renamed/removed pages."""
+    updates = {}
+    if not config_files:
+        return updates
+    custom_section = render_custom_instructions(custom_instructions)
+
+    if new_docs:
+        new_docs_section = (
+            "Newly created documentation pages to add to the navigation:\n"
+            + "\n".join(f"- {nd['path']} (title: {nd['title']})" for nd in new_docs)
+            + "\n"
+        )
+    else:
+        new_docs_section = "No new pages were created in this round.\n"
+
+    for config_path, config_content in config_files.items():
+        print(f"  Updating VitePress navigation in {config_path}...")
+        prompt = CONFIG_UPDATE_USER_PROMPT_TEMPLATE.format(
+            config_path=config_path,
+            config_content=config_content,
+            new_docs_section=new_docs_section,
+            diff_text=diff_text[:MAX_DIFF_CHARS],
+            pr_description=pr_description or "No description provided.",
+            custom_instructions_section=custom_section,
+        )
+        response = client.chat.completions.create(
+            model=OPENAI_MODEL,
+            messages=[
+                {"role": "system", "content": CONFIG_UPDATE_SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ],
+        )
+        new_content = strip_code_fences(get_message_content(response))
+        if new_content.strip() and new_content != config_content:
+            updates[config_path] = new_content
+            print(f"    -> Updated navigation in {config_path}")
+        else:
+            print(f"    -> No navigation changes for {config_path}")
     return updates
 
 
@@ -486,12 +676,78 @@ def main():
         print(f"No markdown files found in {args.doc_path}.")
         sys.exit(0)
 
-    # 3. Triage
-    files_to_update = call_openai_triage(
-        client, diff_text, pr_description, doc_files, custom_instructions
+    # Separate the VitePress config (which lives above the doc subdirectory)
+    # from the markdown pages; the config is handled by a dedicated navigation
+    # step so it can account for both existing-page and new-page changes.
+    config_files = {p: c for p, c in doc_files.items() if is_vitepress_config(p)}
+    md_files = {p: c for p, c in doc_files.items() if p not in config_files}
+
+    # 3. Propose entirely new pages for functionality no existing page covers.
+    new_docs = call_openai_propose_new_docs(
+        client,
+        diff_text,
+        pr_description,
+        list(md_files),
+        config_files,
+        args.doc_path,
+        custom_instructions,
     )
-    if not files_to_update:
-        print("OpenAI determined no documentation update is needed.")
+    if new_docs:
+        print(
+            f"Proposed {len(new_docs)} new page(s): "
+            + ", ".join(nd["path"] for nd in new_docs)
+        )
+
+    # 4. Triage existing pages.
+    files_to_update = call_openai_triage(
+        client, diff_text, pr_description, md_files, custom_instructions
+    )
+
+    updates = {}
+
+    # 5a. Update existing pages that need it.
+    if files_to_update:
+        print(f"Updating {len(files_to_update)} existing page(s)...")
+        filtered_doc_files = {path: md_files[path] for path in files_to_update}
+        updates.update(
+            call_openai_update(
+                client,
+                diff_text,
+                pr_description,
+                filtered_doc_files,
+                custom_instructions,
+            )
+        )
+
+    # 5b. Generate the proposed new pages.
+    updates.update(
+        call_openai_create_new_docs(
+            client, diff_text, pr_description, new_docs, md_files, custom_instructions
+        )
+    )
+
+    # 5c. Update the VitePress navigation when pages were created, or when the
+    # config itself needs structural fixes (renamed/removed pages).
+    config_needs_update = bool(new_docs) or bool(
+        config_files
+        and call_openai_triage(
+            client, diff_text, pr_description, config_files, custom_instructions
+        )
+    )
+    if config_needs_update:
+        updates.update(
+            call_openai_update_vitepress_config(
+                client,
+                config_files,
+                new_docs,
+                diff_text,
+                pr_description,
+                custom_instructions,
+            )
+        )
+
+    if not updates:
+        print("No documentation changes were generated.")
         post_source_pr_comment(
             gh,
             source_repo,
@@ -501,30 +757,7 @@ def main():
         )
         sys.exit(0)
 
-    print(
-        f"Documentation update required for {len(files_to_update)} files. Proceeding to generation..."
-    )
-
-    # Filter doc_files to only include those that need updates
-    filtered_doc_files = {path: doc_files[path] for path in files_to_update}
-
-    # 4. Generate Updates
-    updates = call_openai_update(
-        client, diff_text, pr_description, filtered_doc_files, custom_instructions
-    )
-
-    if not updates:
-        print("OpenAI returned no updates.")
-        post_source_pr_comment(
-            gh,
-            source_repo,
-            source_pr,
-            "📝 **Documentation check complete** — the docs already look "
-            "up to date; no changes were generated.",
-        )
-        sys.exit(0)
-
-    # 5. Create or update PR in Doc Repo
+    # 6. Create or update PR in Doc Repo
     pr_url = create_doc_pr(
         source_repo, source_pr, doc_repo, branch_name, existing_pr, updates
     )
@@ -538,12 +771,14 @@ def main():
         )
         sys.exit(0)
 
-    # 6. Summarize and report back on the source PR
+    # 7. Summarize and report back on the source PR. Pass the full original
+    # doc set as the diff base; newly created pages are absent from it, so the
+    # summary renders them as all-new additions.
     summary = call_openai_summary(
         client,
         diff_text,
         pr_description,
-        filtered_doc_files,
+        doc_files,
         updates,
         custom_instructions,
     )
