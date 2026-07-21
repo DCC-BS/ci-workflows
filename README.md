@@ -158,6 +158,8 @@ jobs:
 
 Reusable workflow to automatically check if a PR requires documentation updates using an LLM (OpenAI). If updates are needed, it creates a PR in the documentation repository.
 
+Beyond editing existing pages, the workflow can also **create entirely new pages** when the diff introduces functionality that no existing page covers, and it updates the VitePress config's sidebar/nav to link those new pages. The config file (`.vitepress/config.ts`/`.mts`) is fetched from above the `doc_path` subdirectory so navigation entries can be added, renamed, or removed.
+
 - `doc_repo` — Owner/Name of the target documentation repository.
 - `doc_path` — Path to markdown files in the doc repo.
 - `pr_number` — PR number to analyze. The source repository is taken from `github.repository`.
