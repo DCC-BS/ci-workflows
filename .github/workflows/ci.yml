@@ -1,4 +1,4 @@
-name: CI (mise, unified)
+name: CI (install & test)
 
 on:
   workflow_call:
@@ -8,11 +8,6 @@ on:
         required: false
         type: string
         default: "."
-      run-install:
-        description: "Run the install task"
-        required: false
-        type: boolean
-        default: true
       run-check:
         description: "Run the check task (lint, format, types, secret scan)"
         required: false
@@ -33,11 +28,6 @@ on:
         required: false
         type: boolean
         default: false
-      install-command:
-        description: "Command for the install step"
-        required: false
-        type: string
-        default: "mise run install"
       check-command:
         description: "Command for the check step"
         required: false
@@ -76,7 +66,7 @@ on:
 
 jobs:
   ci:
-    name: mise CI
+    name: CI (install & test)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -95,10 +85,6 @@ jobs:
         uses: DCC-BS/ci-workflows/actions/setup-mise@v2
         with:
           working-directory: ${{ inputs.working-directory }}
-
-      - name: Install
-        if: ${{ inputs.run-install }}
-        run: ${{ inputs.install-command }}
 
       - name: Check
         if: ${{ inputs.run-check }}
