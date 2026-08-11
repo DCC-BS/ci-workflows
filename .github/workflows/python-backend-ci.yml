@@ -1,99 +1,41 @@
 name: Python Backend CI (Reusable)
 
+# v2: mise-based. Delegates to the unified ci.yml. The make-based v1 is frozen
+# under the @v1 tag. tool versions (python, uv) come from the project's mise.toml.
+
 on:
   workflow_call:
     inputs:
-      python_versions:
-        description: JSON array of Python versions for the test matrix
-        required: false
-        type: string
-        default: '["3.12"]'
-      check_command:
-        description: Command to run project quality checks
-        required: false
-        type: string
-        default: "make check"
-      quality_python_version:
-        description: Python version used for quality job
-        required: false
-        type: string
-        default: "3.12"
-      test_command:
-        description: Optional command to run tests
-        required: false
-        type: string
-        default: ""
-      uv_version:
-        description: uv version to install
-        required: false
-        type: string
-        default: "0.11.3"
-      working_directory:
-        description: Project directory
+      working-directory:
+        description: "Project directory (must contain mise.toml)"
         required: false
         type: string
         default: "."
-      uv_extra_packages:
-        description: Extra packages to install with uv
+      check-command:
+        description: "Command for the quality check (lock, format, lint, types, secret scan)"
         required: false
         type: string
-        default: ""
+        default: "mise run check"
+      test-command:
+        description: "Command for the unit test step"
+        required: false
+        type: string
+        default: "mise run test"
+      run-test:
+        description: "Run the test step"
+        required: false
+        type: boolean
+        default: true
 
 jobs:
-  quality:
-    name: Quality Checks
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    defaults:
-      run:
-        shell: bash
-        working-directory: ${{ inputs.working_directory }}
-    steps:
-      - name: Check out
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: ~/.cache/pre-commit
-          key: pre-commit-${{ hashFiles(format('{0}/.pre-commit-config.yaml', inputs.working_directory)) }}
-
-      - name: Set up the environment
-        uses: DCC-BS/ci-workflows/actions/setup-python-env@814649735835a84a3d0d6c8d6e6db87dfeb8b348 # v8
-        with:
-          python-version: ${{ inputs.quality_python_version }}
-          uv-version: ${{ inputs.uv_version }}
-          working-directory: ${{ inputs.working_directory }}
-          uv_extra_packages: ${{ inputs.uv_extra_packages }}
-
-      - name: Run quality checks
-        run: ${{ inputs.check_command }}
-
-  tests-and-type-check:
-    name: Tests & Type Checks
-    runs-on: ubuntu-latest
-    needs: quality
-    if: ${{ inputs.test_command != '' || inputs.typecheck_command != '' }}
-    strategy:
-      matrix:
-        python-version: ${{ fromJson(inputs.python_versions) }}
-      fail-fast: false
-    defaults:
-      run:
-        shell: bash
-        working-directory: ${{ inputs.working_directory }}
-    steps:
-      - name: Check out
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-
-      - name: Set up the environment
-        uses: DCC-BS/ci-workflows/actions/setup-python-env@814649735835a84a3d0d6c8d6e6db87dfeb8b348 # v8
-        with:
-          python-version: ${{ matrix.python-version }}
-          uv-version: ${{ inputs.uv_version }}
-          working-directory: ${{ inputs.working_directory }}
-          uv_extra_packages: ${{ inputs.uv_extra_packages }}
-
-      - name: Run tests
-        if: ${{ inputs.test_command != '' }}
-        run: ${{ inputs.test_command }}
+  backend-ci:
+    uses: DCC-BS/ci-workflows/.github/workflows/ci.yml@v2
+    with:
+      working-directory: ${{ inputs.working-directory }}
+      run-install: true
+      run-check: true
+      check-command: ${{ inputs.check-command }}
+      run-test: ${{ inputs.run-test }}
+      test-command: ${{ inputs.test-command }}
+      run-build: false
+      run-e2e: false

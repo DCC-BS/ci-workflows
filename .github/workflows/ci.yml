@@ -1,0 +1,135 @@
+name: CI (mise, unified)
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: "Project directory (must contain mise.toml)"
+        required: false
+        type: string
+        default: "."
+      run-install:
+        description: "Run the install task"
+        required: false
+        type: boolean
+        default: true
+      run-check:
+        description: "Run the check task (lint, format, types, secret scan)"
+        required: false
+        type: boolean
+        default: true
+      run-test:
+        description: "Run the unit test task"
+        required: false
+        type: boolean
+        default: true
+      run-build:
+        description: "Run the build task (opt-in; not all projects have one)"
+        required: false
+        type: boolean
+        default: false
+      run-e2e:
+        description: "Run end-to-end tests (opt-in)"
+        required: false
+        type: boolean
+        default: false
+      install-command:
+        description: "Command for the install step"
+        required: false
+        type: string
+        default: "mise run install"
+      check-command:
+        description: "Command for the check step"
+        required: false
+        type: string
+        default: "mise run check"
+      test-command:
+        description: "Command for the test step"
+        required: false
+        type: string
+        default: "mise run test"
+      build-command:
+        description: "Command for the build step"
+        required: false
+        type: string
+        default: "mise run build"
+      e2e-command:
+        description: "Command for the e2e step"
+        required: false
+        type: string
+        default: "mise run test:e2e"
+      e2e-browser-install-command:
+        description: "Command to install e2e browsers (empty to skip)"
+        required: false
+        type: string
+        default: "bunx playwright install --with-deps"
+      upload-playwright-report:
+        description: "Upload the Playwright report artifact (requires run-e2e)"
+        required: false
+        type: boolean
+        default: false
+      artifact-retention-days:
+        description: "Retention for the Playwright report artifact"
+        required: false
+        type: number
+        default: 30
+
+jobs:
+  ci:
+    name: mise CI
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    env:
+      # ci mode makes secret-dependent steps (e.g. varlock scan) work without
+      # a pass-cli login, so `mise run check` is safe to run in CI.
+      APP_MODE: ci
+    steps:
+      - name: Check out
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Setup mise
+        uses: DCC-BS/ci-workflows/actions/setup-mise@v2
+        with:
+          working-directory: ${{ inputs.working-directory }}
+
+      - name: Install
+        if: ${{ inputs.run-install }}
+        run: ${{ inputs.install-command }}
+
+      - name: Check
+        if: ${{ inputs.run-check }}
+        run: ${{ inputs.check-command }}
+
+      - name: Test
+        if: ${{ inputs.run-test }}
+        run: ${{ inputs.test-command }}
+
+      - name: Install e2e browsers
+        if: ${{ inputs.run-e2e && inputs.e2e-browser-install-command != '' }}
+        run: ${{ inputs.e2e-browser-install-command }}
+
+      - name: E2E tests
+        if: ${{ inputs.run-e2e }}
+        run: ${{ inputs.e2e-command }}
+
+      - name: Summarize Playwright report
+        if: ${{ always() && inputs.run-e2e }}
+        uses: daun/playwright-report-summary@b223a65bd3965c7cced5feba27dbc0c06acc51b2 # v3.9.0
+        with:
+          report-file: results.json
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() && inputs.run-e2e && inputs.upload-playwright-report }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: playwright-report
+          path: ${{ inputs.working-directory }}/playwright-report/
+          retention-days: ${{ inputs.artifact-retention-days }}
+
+      - name: Build
+        if: ${{ inputs.run-build }}
+        run: ${{ inputs.build-command }}
