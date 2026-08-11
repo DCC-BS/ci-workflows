@@ -1,20 +1,20 @@
 # DCC-BS CI Workflows
 
 Reusable GitHub Actions (workflows + composite actions) to standardize CI across
-DCC-BS repositories. **v2 is mise-based**: every project is driven through
+DCC-BS repositories. **v10 is mise-based**: every project is driven through
 `mise run <task>`, and a single language-agnostic pipeline serves both frontends
 and backends.
 
-## v1 → v2
+## v9 → v10
 
-- **v2 (current, mise-based)** — projects provision `bun`/`node`/`python`/`uv`
+- **v10 (current, mise-based)** — projects provision `bun`/`node`/`python`/`uv`
   from their own `mise.toml` via the `setup-mise` action, and CI runs the
   standard tasks (`mise run install | check | test:unit | build`). The
   Python-version matrix is gone (single version from `mise.toml`).
-- **v1 (frozen, make/bun-based)** — still available under the `@v1` tag for
+- **v9 (frozen, make/bun-based)** — still available under the `@v1` tag for
   repositories that have not migrated yet. It will not receive new features.
 
-New consumers should use **v2**. Existing consumers can move from `@v1` to `@v2`
+New consumers should use **v10**. Existing consumers can move from `@v9` to `@v10`
 once their repository ships a `mise.toml` (see the
 [mise tooling standard](https://dcc-bs.github.io/documentation/dev-setup/mise)).
 
@@ -33,7 +33,7 @@ once their repository ships a `mise.toml` (see the
 
 ## Usage
 
-Pin to the major version `v2` for safe updates.
+Pin to the major version `v10` for safe updates.
 
 ### Unified CI (`ci.yml`) — recommended
 
@@ -53,7 +53,7 @@ on:
 
 jobs:
   ci:
-    uses: DCC-BS/ci-workflows/.github/workflows/ci.yml@v2
+    uses: DCC-BS/ci-workflows/.github/workflows/ci.yml@v10
     with:
       working_directory: '.'
       # install/check/test:unit run by default; build and e2e are opt-in:
@@ -84,7 +84,7 @@ on:
 
 jobs:
   backend-ci:
-    uses: DCC-BS/ci-workflows/.github/workflows/python-backend-ci.yml@v2
+    uses: DCC-BS/ci-workflows/.github/workflows/python-backend-ci.yml@v10
     with:
       check_command: "mise run check"   # default
       test_command: "mise run test:unit"     # default
@@ -118,7 +118,7 @@ permissions:
 
 jobs:
   publish:
-    uses: DCC-BS/ci-workflows/.github/workflows/publish-docker.yml@v2
+    uses: DCC-BS/ci-workflows/.github/workflows/publish-docker.yml@v10
     secrets: inherit
     with:
       release_type: ${{ inputs.version_bump }}   # major|minor|patch
@@ -159,7 +159,7 @@ on:
 
 jobs:
   publish:
-    uses: DCC-BS/ci-workflows/.github/workflows/npm-publish.yml@v2
+    uses: DCC-BS/ci-workflows/.github/workflows/npm-publish.yml@v10
     secrets: inherit        # make sure NPM_TOKEN is defined for the caller repo
     with:
       version_type: ${{ inputs.version_type }}
@@ -231,7 +231,7 @@ on:
 
 jobs:
   check-docs:
-    uses: DCC-BS/ci-workflows/.github/workflows/llm-doc-update.yml@v2
+    uses: DCC-BS/ci-workflows/.github/workflows/llm-doc-update.yml@v10
     with:
       doc_repo: "DCC-BS/documentation"
       doc_path: "docs/relevant-section"
@@ -267,8 +267,8 @@ jobs:
 
 ## Versioning
 - Tagged releases follow SemVer (e.g., `v2.0.0`).
-- Consumers should pin to the major tag `@v2` to receive compatible improvements.
-- `@v1` is frozen (make/bun-based) and only receives critical fixes; migrate to `@v2`.
+- Consumers should pin to the major tag `@v10` to receive compatible improvements.
+- `@v9` is frozen (make/bun-based) and only receives critical fixes; migrate to `@v10`.
 - Breaking changes will result in a new major tag (e.g., `v3`).
 
 ## Releasing (one‑time bootstrap for this repo)
@@ -284,4 +284,4 @@ jobs:
    git tag v1.0.0
    git push origin v1.0.0
    ```
-3. Consumers can then reference `DCC-BS/ci-w​orkflows@v1` as shown above.
+3. Consumers can then reference `DCC-BS/ci-workflows@v1` as shown above.
