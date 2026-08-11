@@ -1,70 +1,64 @@
 name: Frontend CI (Reusable)
 
+# v2: mise-based. Delegates to the unified ci.yml. The bun-based v1 is frozen
+# under the @v1 tag. tool versions (bun, node) come from the project's mise.toml.
+
 on:
   workflow_call:
     inputs:
-      node_version:
-        required: false
-        type: string
-        default: "24.x"
-      working_directory:
+      working-directory:
+        description: "Project directory (must contain mise.toml)"
         required: false
         type: string
         default: "."
-      run_biome:
+      build-command:
+        description: "Command for the build step"
         required: false
         type: string
-        default: "true"
-      biome_version:
+        default: "mise run build"
+      test-command:
+        description: "Command for the unit test step (e.g. vitest)"
         required: false
         type: string
-        default: "latest"
-      run_playwright:
+        default: "mise run test:unit"
+      e2e-command:
+        description: "Command for the e2e step (e.g. playwright)"
         required: false
         type: string
-        default: "true"
-      install_method:
+        default: "mise run test:e2e"
+      run-build:
+        description: "Run the build step"
         required: false
-        type: string
-        default: "bun"
-      install_command:
+        type: boolean
+        default: true
+      run-e2e:
+        description: "Run e2e tests"
         required: false
-        type: string
-        default: ""
-      build_command:
+        type: boolean
+        default: true
+      upload-playwright-report:
+        description: "Upload the Playwright report artifact"
         required: false
-        type: string
-        default: "bun run build"
-      test_command:
-        required: false
-        type: string
-        default: "bunx playwright test"
-      artifact_name:
-        required: false
-        type: string
-        default: "playwright-report"
-      artifact_retention_days:
+        type: boolean
+        default: true
+      artifact-retention-days:
+        description: "Retention for the Playwright report artifact"
         required: false
         type: number
         default: 30
 
 jobs:
-  build-test:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Build, Lint, and Test
-        uses: DCC-BS/ci-workflows/actions/node-bun-biome-playwright@6d1cca8023e197f6e9cda5e64f3b3f0448f4cf6e # v9
-        with:
-          node_version: ${{ inputs.node_version }}
-          working_directory: ${{ inputs.working_directory }}
-          run_biome: ${{ inputs.run_biome }}
-          biome_version: ${{ inputs.biome_version }}
-          run_playwright: ${{ inputs.run_playwright }}
-          install_method: ${{ inputs.install_method }}
-          install_command: ${{ inputs.install_command }}
-          build_command: ${{ inputs.build_command }}
-          test_command: ${{ inputs.test_command }}
-          artifact_name: ${{ inputs.artifact_name }}
-          artifact_retention_days: ${{ inputs.artifact_retention_days }}
+  frontend-ci:
+    uses: DCC-BS/ci-workflows/.github/workflows/ci.yml@v2
+    with:
+      working-directory: ${{ inputs.working-directory }}
+      run-install: true
+      run-check: true
+      run-test: true
+      test-command: ${{ inputs.test-command }}
+      run-build: ${{ inputs.run-build }}
+      build-command: ${{ inputs.build-command }}
+      run-e2e: ${{ inputs.run-e2e }}
+      e2e-command: ${{ inputs.e2e-command }}
+      upload-playwright-report: ${{ inputs.upload-playwright-report }}
+      artifact-retention-days: ${{ inputs.artifact-retention-days }}
