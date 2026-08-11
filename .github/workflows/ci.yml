@@ -37,7 +37,7 @@ on:
         description: "Command for the test step"
         required: false
         type: string
-        default: "mise run test"
+        default: "mise run test:unit"
       build-command:
         description: "Command for the build step"
         required: false

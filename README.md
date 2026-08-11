@@ -9,7 +9,7 @@ and backends.
 
 - **v2 (current, mise-based)** — projects provision `bun`/`node`/`python`/`uv`
   from their own `mise.toml` via the `setup-mise` action, and CI runs the
-  standard tasks (`mise run install | check | test | build`). The
+  standard tasks (`mise run install | check | test:unit | build`). The
   Python-version matrix is gone (single version from `mise.toml`).
 - **v1 (frozen, make/bun-based)** — still available under the `@v1` tag for
   repositories that have not migrated yet. It will not receive new features.
@@ -35,7 +35,7 @@ Pin to the major version `v2` for safe updates.
 
 ### Unified CI (`ci.yml`) — recommended
 
-Runs `setup-mise` → `mise run install` → `check` → `test` → (optional) `build` / `e2e`.
+Runs `setup-mise` → `mise run install` → `check` → `test:unit` → (optional) `build` / `e2e`.
 Works identically for Nuxt frontends and FastAPI backends because every project
 exposes the same `mise run` task names. `APP_MODE=ci` is set automatically so
 that secret-dependent steps (e.g. `varlock scan` inside `check`) run without a
@@ -54,7 +54,7 @@ jobs:
     uses: DCC-BS/ci-workflows/.github/workflows/ci.yml@v2
     with:
       working_directory: '.'
-      # install/check/test run by default; build and e2e are opt-in:
+      # install/check/test:unit run by default; build and e2e are opt-in:
       run_build: true        # frontends typically enable this
       run_e2e: true          # enables Playwright; set upload_playwright_report too
       upload_playwright_report: true
@@ -85,7 +85,7 @@ jobs:
     uses: DCC-BS/ci-workflows/.github/workflows/python-backend-ci.yml@v2
     with:
       check_command: "mise run check"   # default
-      test_command: "mise run test"     # default
+      test_command: "mise run test:unit"     # default
 ```
 
 `APP_MODE=ci` is set by the pipeline so `varlock scan` (run inside `check`) works

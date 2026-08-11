@@ -20,7 +20,7 @@ on:
         description: "Command for the unit test step"
         required: false
         type: string
-        default: "mise run test"
+        default: "mise run test:unit"
       run-test:
         description: "Run the test step"
         required: false

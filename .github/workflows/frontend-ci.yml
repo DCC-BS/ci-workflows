@@ -20,7 +20,7 @@ on:
         description: "Command for the unit test step (e.g. vitest)"
         required: false
         type: string
-        default: "mise run test"
+        default: "mise run test:unit"
       e2e-command:
         description: "Command for the e2e step (e.g. playwright)"
         required: false
