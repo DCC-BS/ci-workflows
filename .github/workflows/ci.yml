@@ -95,7 +95,7 @@ jobs:
 
       - name: Summarize Playwright report
         if: ${{ always() && (inputs.e2e-command != 'mise run test:e2e' || steps.detect-tasks.outputs.has-test-e2e == 'true') }}
-        uses: daun/playwright-report-summary@b223a65bd3965c7cced5feba27dbc0c06acc51b2 # v3.9.0
+        uses: daun/playwright-report-summary@31ed947ec7a623d18a66cfd20ef546dc66ef8063 # v4.1.0
         with:
           report-file: results.json
 
