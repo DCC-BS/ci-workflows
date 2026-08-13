@@ -1,7 +1,9 @@
 name: Frontend CI (Reusable)
 
-# v2: mise-based. Delegates to the unified ci.yml. The bun-based v1 is frozen
-# under the @v1 tag. tool versions (bun, node) come from the project's mise.toml.
+# v2: mise-based. Delegates to the unified ci.yml. Steps auto-detect their
+# corresponding mise tasks (check, test:unit, build, test:e2e); no run-* flags
+# are forwarded. Browser install is expected to live inside the project's
+# `mise run test:e2e` task.
 
 on:
   workflow_call:
@@ -26,16 +28,6 @@ on:
         required: false
         type: string
         default: "mise run test:e2e"
-      run-build:
-        description: "Run the build step"
-        required: false
-        type: boolean
-        default: true
-      run-e2e:
-        description: "Run e2e tests"
-        required: false
-        type: boolean
-        default: true
       upload-playwright-report:
         description: "Upload the Playwright report artifact"
         required: false
@@ -52,13 +44,9 @@ jobs:
     uses: DCC-BS/ci-workflows/.github/workflows/ci.yml@v2
     with:
       working-directory: ${{ inputs.working-directory }}
-      run-install: true
-      run-check: true
-      run-test: true
+      check-command: "mise run check"
       test-command: ${{ inputs.test-command }}
-      run-build: ${{ inputs.run-build }}
       build-command: ${{ inputs.build-command }}
-      run-e2e: ${{ inputs.run-e2e }}
       e2e-command: ${{ inputs.e2e-command }}
       upload-playwright-report: ${{ inputs.upload-playwright-report }}
       artifact-retention-days: ${{ inputs.artifact-retention-days }}

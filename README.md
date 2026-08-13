@@ -9,8 +9,10 @@ and backends.
 
 - **v2 (current, mise-based)** — projects provision `bun`/`node`/`python`/`uv`
   from their own `mise.toml` via the `setup-mise` action, and CI runs the
-  standard tasks (`mise run install | check | test:unit | build`). The
-  Python-version matrix is gone (single version from `mise.toml`).
+  standard tasks (`mise run check | test:unit | build | test:e2e`). The
+  Python-version matrix is gone (single version from `mise.toml`). Each step
+  auto-detects whether its task exists in `mise.toml` and is skipped if not —
+  no `run-*` flags to maintain.
 - **v1 (frozen, make/bun-based)** — still available under the `@v1` tag for
   repositories that have not migrated yet. It will not receive new features.
 
@@ -37,11 +39,18 @@ Pin to the major version `v2` for safe updates.
 
 ### Unified CI (`ci.yml`) — recommended
 
-Runs `setup-mise` → `mise run install` → `check` → `test:unit` → (optional) `build` / `e2e`.
-Works identically for Nuxt frontends and FastAPI backends because every project
-exposes the same `mise run` task names. `APP_MODE=ci` is set automatically so
-that secret-dependent steps (e.g. `varlock scan` inside `check`) run without a
-`pass-cli` login.
+Runs `setup-mise` → `mise install` (tool provisioning) → detect mise tasks →
+`check` → `test:unit` → `build` → `test:e2e`. Each step runs only if its
+matching task is defined in the project's `mise.toml`; absent tasks are skipped
+silently, so the same pipeline serves backends (no `build`/`test:e2e`), frontends
+(no `test:unit` if you only run e2e), and anything in between. Works identically
+for Nuxt frontends and FastAPI backends because every project exposes the same
+`mise run` task names. `APP_MODE=ci` is set automatically so that secret-dependent
+steps (e.g. `varlock scan` inside `check`) run without a `pass-cli` login.
+
+Playwright browser install is **not** handled by the workflow — each project's
+`mise run test:e2e` task is expected to install its own browsers (e.g. via a
+`depends` entry or a `pre` hook).
 
 ```yaml
 name: CI
@@ -56,23 +65,26 @@ jobs:
     uses: DCC-BS/ci-workflows/.github/workflows/ci.yml@v2
     with:
       working_directory: '.'
-      # install/check/test:unit run by default; build and e2e are opt-in:
-      run_build: true        # frontends typically enable this
-      run_e2e: true          # enables Playwright; set upload_playwright_report too
+      # Steps auto-detect their mise task; absent tasks are skipped.
+      # upload_playwright_report opts into uploading the e2e report artifact
+      # (only relevant when a `test:e2e` task exists).
       upload_playwright_report: true
 ```
 
-Inputs (all optional): `working-directory`, `run-install`/`run-check`/`run-test`/
-`run-build`/`run-e2e` (booleans), and `install-command`/`check-command`/
-`test-command`/`build-command`/`e2e-command` (default to the matching
-`mise run <task>`). `run-build` and `run-e2e` default to `false` since not every
-project has a build or e2e task.
+Inputs (all optional): `working-directory`, `check-command`/`test-command`/
+`build-command`/`e2e-command` (default to the matching `mise run <task>`),
+`upload-playwright-report` (boolean, default `false`), and
+`artifact-retention-days` (default `30`). The `run-check`/`run-test`/`run-build`/
+`run-e2e` boolean inputs from earlier v2 releases have been **removed** in favour
+of automatic task detection — callers that previously passed them should drop
+them; the workflow now skips any step whose mise task is not defined.
 
 ### Python Backend CI
 
-Thin wrapper around `ci.yml` with backend defaults (install → check → test; no
-build, no e2e). Tool versions come from the project's `mise.toml`, so there is no
-version matrix.
+Thin wrapper around `ci.yml` with backend defaults (check → test; no build, no
+e2e — but those steps will still run if the project happens to define `build` or
+`test:e2e` tasks, since detection is automatic). Tool versions come from the
+project's `mise.toml`, so there is no version matrix.
 
 ```yaml
 name: Main

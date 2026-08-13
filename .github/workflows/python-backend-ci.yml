@@ -1,7 +1,7 @@
 name: Python Backend CI (Reusable)
 
-# v2: mise-based. Delegates to the unified ci.yml. The make-based v1 is frozen
-# under the @v1 tag. tool versions (python, uv) come from the project's mise.toml.
+# v2: mise-based. Delegates to the unified ci.yml. Steps auto-detect their
+# corresponding mise tasks (check, test:unit); no run-* flags are forwarded.
 
 on:
   workflow_call:
@@ -21,21 +21,11 @@ on:
         required: false
         type: string
         default: "mise run test:unit"
-      run-test:
-        description: "Run the test step"
-        required: false
-        type: boolean
-        default: true
 
 jobs:
   backend-ci:
     uses: DCC-BS/ci-workflows/.github/workflows/ci.yml@v2
     with:
       working-directory: ${{ inputs.working-directory }}
-      run-install: true
-      run-check: true
       check-command: ${{ inputs.check-command }}
-      run-test: ${{ inputs.run-test }}
       test-command: ${{ inputs.test-command }}
-      run-build: false
-      run-e2e: false
