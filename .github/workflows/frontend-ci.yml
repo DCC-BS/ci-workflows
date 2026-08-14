@@ -41,7 +41,7 @@ on:
 
 jobs:
   frontend-ci:
-    uses: DCC-BS/ci-workflows/.github/workflows/ci.yml@v2
+    uses: DCC-BS/ci-workflows/.github/workflows/ci.yml@v9
     with:
       working-directory: ${{ inputs.working-directory }}
       check-command: "mise run check"
