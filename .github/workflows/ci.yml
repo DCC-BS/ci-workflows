@@ -45,6 +45,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      # Allow the Playwright report summary action to comment on pull requests.
+      # Comments still fail gracefully (with a job summary fallback) for fork PRs,
+      # where GitHub never grants write permissions to the workflow token.
+      pull-requests: write
     defaults:
       run:
         working-directory: ${{ inputs.working-directory }}
@@ -98,6 +102,9 @@ jobs:
         uses: daun/playwright-report-summary@b223a65bd3965c7cced5feba27dbc0c06acc51b2 # v3.9.0
         with:
           report-file: results.json
+          # Also write the results to the workflow run summary, so they are
+          # available even when a PR comment cannot be created (e.g. fork PRs).
+          job-summary: true
 
       - name: Upload Playwright report
         if: ${{ !cancelled() && (inputs.e2e-command != 'mise run test:e2e' || steps.detect-tasks.outputs.has-test-e2e == 'true') && inputs.upload-playwright-report }}
