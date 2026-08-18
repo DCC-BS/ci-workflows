@@ -34,6 +34,11 @@ on:
         required: false
         type: boolean
         default: true
+      build_args:
+        description: "Build args as a newline-separated list (e.g., FOO=bar)"
+        required: false
+        type: string
+        default: ""
     outputs:
       version:
         description: "Project version"
@@ -105,6 +110,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           no-cache: true
           platforms: ${{ inputs.platforms }}
+          build-args: ${{ inputs.build_args }}
 
       - name: Summary
         shell: bash
