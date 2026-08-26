@@ -81,6 +81,10 @@ jobs:
           echo "has-test-e2e=$(has test:e2e)"     >> "$GITHUB_OUTPUT"
           echo "has-build=$(has build)"           >> "$GITHUB_OUTPUT"
 
+      - name: Build
+        if: ${{ inputs.build-command != 'mise run build' || steps.detect-tasks.outputs.has-build == 'true' }}
+        run: ${{ inputs.build-command }}
+
       - name: Check
         if: ${{ inputs.check-command != 'mise run ci-check' || steps.detect-tasks.outputs.has-check == 'true' }}
         run: ${{ inputs.check-command }}
@@ -88,10 +92,6 @@ jobs:
       - name: Test
         if: ${{ inputs.test-command != 'mise run test:unit' || steps.detect-tasks.outputs.has-test-unit == 'true' }}
         run: ${{ inputs.test-command }}
-
-      - name: Build
-        if: ${{ inputs.build-command != 'mise run build' || steps.detect-tasks.outputs.has-build == 'true' }}
-        run: ${{ inputs.build-command }}
 
       - name: E2E tests
         if: ${{ inputs.e2e-command != 'mise run test:e2e' || steps.detect-tasks.outputs.has-test-e2e == 'true' }}
