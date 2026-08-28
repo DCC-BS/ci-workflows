@@ -39,6 +39,11 @@ on:
         required: false
         type: string
         default: ""
+      inject_github_token:
+        description: "Inject GITHUB_TOKEN as a build arg (e.g., for mise github: refs)"
+        required: false
+        type: boolean
+        default: false
     outputs:
       version:
         description: "Project version"
@@ -110,7 +115,9 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           no-cache: true
           platforms: ${{ inputs.platforms }}
-          build-args: ${{ inputs.build_args }}
+          build-args: |
+            ${{ inputs.build_args }}
+            ${{ inputs.inject_github_token && format('GITHUB_TOKEN={0}', secrets.GITHUB_TOKEN) || '' }}
 
       - name: Summary
         shell: bash
