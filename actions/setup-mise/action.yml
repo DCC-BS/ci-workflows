@@ -9,6 +9,10 @@ inputs:
     description: "Enable mise experimental features"
     required: false
     default: "true"
+  version:
+    description: "mise version to install. Pinned to a known-good release to avoid transient 404s from the rolling `latest` tag."
+    required: false
+    default: "v2026.9.2"
 runs:
   using: "composite"
   steps:
@@ -18,6 +22,9 @@ runs:
         install: false
         cache: true
         experimental: ${{ inputs.experimental }}
+        # Pin the mise binary to a known-good release. `latest` can point at a
+        # release whose GitHub asset is missing (404), which breaks setup.
+        version: ${{ inputs.version }}
 
     - name: Trust config and install tools
       shell: bash
