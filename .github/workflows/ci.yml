@@ -58,7 +58,7 @@ jobs:
       APP_MODE: ci
     steps:
       - name: Check out
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Setup mise
         uses: DCC-BS/ci-workflows/actions/setup-mise@2a3ee19f23bdd73724875e6771acd6636b9ac36b # v10
