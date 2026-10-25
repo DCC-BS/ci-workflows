@@ -29,7 +29,7 @@ once their repository ships a `mise.toml` (see the
   - `frontend-ci.yml` — Thin wrapper around `ci.yml` with frontend defaults (build + e2e).
   - `python-backend-ci.yml` — Thin wrapper around `ci.yml` with backend defaults (check + test).
   - `publish-docker.yml` — Reusable Docker publish workflow for GHCR (calls `bump-version`).
-  - `npm-publish.yml` — Reusable workflow to bump, build, and publish npm packages.
+  - `npm-publish.yml` — Reusable workflow to build and publish npm packages (toolchain from mise.toml).
   - `llm-doc-update.yml` — Reusable workflow that drafts documentation updates from a PR diff using an LLM.
   - `llm-doc-update-conditional.yml` — Wrapper that runs `llm-doc-update.yml` when a PR is commented with `/documentation`.
 
@@ -150,10 +150,13 @@ jobs:
 
 ### Publish Package to NPM
 
-Reusable workflow to build, version, and publish a package using Bun + npm tooling. Requires a secret `NPM_TOKEN` with publish permissions for the configured registry.
+Reusable workflow that builds and publishes the version in `package.json` (bump it in a PR first; the
+workflow no longer bumps versions). It publishes with npm trusted publishing (OIDC), so the caller
+needs `id-token: write` and no token secret. Bun and Node come from the repo's `mise.toml`, the same
+versions CI and local dev use.
 
-- `version_type` — semantic bump applied via `npm version` (default `patch`)
-- `node_version`, `registry_url`, `bun_version` — runtime setup knobs
+- `node_version`, `bun_version` — optional overrides; empty (default) means the `mise.toml` versions
+- `registry_url` — registry to publish to (default npmjs)
 - `install_command`, `build_command`, `prepack_command`, `publish_command` — override/disable individual lifecycle steps by setting the value you need (use `''` to skip)
 
 Example usage:
@@ -162,24 +165,18 @@ Example usage:
 name: Publish Package
 on:
   workflow_dispatch:
-    inputs:
-      version_type:
-        description: Version increment type
-        type: choice
-        options: [ patch, minor, major ]
-        default: patch
+
+permissions:
+  id-token: write # npm trusted publishing
+  contents: write
 
 jobs:
   publish:
-    uses: DCC-BS/ci-workflows/.github/workflows/npm-publish.yml@v2
-    secrets: inherit        # make sure NPM_TOKEN is defined for the caller repo
+    uses: DCC-BS/ci-workflows/.github/workflows/npm-publish.yml@<sha> # pin by SHA
     with:
-      version_type: ${{ inputs.version_type }}
-      registry_url: https://npm.pkg.github.com
       install_command: bun install
-      build_command: bun generate
+      build_command: bun run generate
       prepack_command: bun run prepack
-      publish_command: bun publish --access public
 ```
 
 ### LLM Documentation Auto-Updater

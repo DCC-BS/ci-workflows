@@ -4,20 +4,20 @@ on:
     workflow_call:
         inputs:
             node_version:
-                description: "Node.js version used for build/publish"
+                description: "Override the Node.js version (default: the one in the repo's mise.toml)"
                 required: false
                 type: string
-                default: "24.x"
+                default: ""
             registry_url:
                 description: "Registry URL passed to setup-node"
                 required: false
                 type: string
                 default: "https://registry.npmjs.org"
             bun_version:
-                description: "Version of Bun to install"
+                description: "Override the Bun version (default: the one in the repo's mise.toml)"
                 required: false
                 type: string
-                default: "latest"
+                default: ""
             install_command:
                 description: "Command to install dependencies"
                 required: false
@@ -50,16 +50,24 @@ jobs:
             - name: Check out repository
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-            - name: Set up Node.js
-              uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-              with:
-                  node-version: ${{ inputs.node_version }}
-                  registry-url: ${{ inputs.registry_url }}
+            # Same toolchain as CI and local dev: bun/node come from the repo's mise.toml, so the
+            # published build never uses a different ("latest") version than the one that was tested.
+            - name: Setup mise
+              uses: DCC-BS/ci-workflows/actions/setup-mise@2a3ee19f23bdd73724875e6771acd6636b9ac36b # v10
 
-            - name: Install Bun
-              uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
-              with:
-                  bun-version: ${{ inputs.bun_version }}
+            - name: Apply version overrides
+              if: ${{ inputs.node_version != '' || inputs.bun_version != '' }}
+              env:
+                  NODE_VERSION: ${{ inputs.node_version }}
+                  BUN_VERSION: ${{ inputs.bun_version }}
+              run: |
+                  if [ -n "$NODE_VERSION" ]; then mise use "node@$NODE_VERSION"; fi
+                  if [ -n "$BUN_VERSION" ]; then mise use "bun@$BUN_VERSION"; fi
+
+            - name: Configure registry
+              env:
+                  REGISTRY_URL: ${{ inputs.registry_url }}
+              run: npm config set registry "$REGISTRY_URL"
 
             - name: Install dependencies
               if: ${{ inputs.install_command != '' }}
