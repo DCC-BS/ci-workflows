@@ -61,7 +61,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup mise
-        uses: DCC-BS/ci-workflows/actions/setup-mise@2a3ee19f23bdd73724875e6771acd6636b9ac36b # v10
+        uses: DCC-BS/ci-workflows/actions/setup-mise@8152661ef37d34457568d0684b3287bacffb2c2c # v10.0.0
         with:
           working-directory: ${{ inputs.working-directory }}
 
