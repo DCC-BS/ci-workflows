@@ -13,6 +13,10 @@ inputs:
     description: "mise version to install. Pinned to a known-good release to avoid transient 404s from the rolling `latest` tag."
     required: false
     default: "v2026.9.2"
+  github-token:
+    description: "Token for GitHub API calls during `mise install`. Without one, mise is limited to 60 unauthenticated requests per hour per runner IP and installs fail with 403."
+    required: false
+    default: ${{ github.token }}
 runs:
   using: "composite"
   steps:
@@ -25,10 +29,14 @@ runs:
         # Pin the mise binary to a known-good release. `latest` can point at a
         # release whose GitHub asset is missing (404), which breaks setup.
         version: ${{ inputs.version }}
+        github_token: ${{ inputs.github-token }}
 
     - name: Trust config and install tools
       shell: bash
       working-directory: ${{ inputs.working-directory }}
+      # mise-action keeps its token to its own step, so pass it here too.
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
       run: |
         mise trust
         mise install
