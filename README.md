@@ -7,7 +7,7 @@ single language-agnostic pipeline serves both frontends and backends.
 ## Versions
 
 Every project is driven through `mise run <task>` and provisions its tools from
-its own `mise.toml`. Releases are tagged `vX.Y.Z` (latest: **v10.0.1**).
+its own `mise.toml`. Releases are tagged `vX.Y.Z` (latest: **v10.0.2**).
 
 - **v10** removed `frontend-ci.yml`, `python-backend-ci.yml` and the
   `setup-python-env` / `node-bun-biome-playwright` actions. Call `ci.yml`
@@ -29,7 +29,7 @@ its own `mise.toml`. Releases are tagged `vX.Y.Z` (latest: **v10.0.1**).
 
 ## Usage
 
-Pin by commit SHA with the release as a comment (`@<sha> # v10.0.1`); Renovate
+Pin by commit SHA with the release as a comment (`@<sha> # v10.0.2`); Renovate
 updates the SHA and the comment together.
 
 ### Unified CI (`ci.yml`) — recommended
@@ -57,7 +57,7 @@ on:
 
 jobs:
   ci:
-    uses: DCC-BS/ci-workflows/.github/workflows/ci.yml@<sha> # v10.0.1
+    uses: DCC-BS/ci-workflows/.github/workflows/ci.yml@<sha> # v10.0.2
     with:
       working-directory: '.'
       # Steps auto-detect their mise task; absent tasks are skipped.
@@ -99,7 +99,7 @@ permissions:
 
 jobs:
   publish:
-    uses: DCC-BS/ci-workflows/.github/workflows/publish-docker.yml@<sha> # v10.0.1
+    uses: DCC-BS/ci-workflows/.github/workflows/publish-docker.yml@<sha> # v10.0.2
     secrets: inherit
     with:
       release_type: ${{ inputs.version_bump }}   # major|minor|patch
@@ -141,7 +141,7 @@ permissions:
 
 jobs:
   publish:
-    uses: DCC-BS/ci-workflows/.github/workflows/npm-publish.yml@<sha> # v10.0.1
+    uses: DCC-BS/ci-workflows/.github/workflows/npm-publish.yml@<sha> # v10.0.2
     with:
       install_command: bun install
       build_command: bun run generate
@@ -209,7 +209,7 @@ on:
 
 jobs:
   check-docs:
-    uses: DCC-BS/ci-workflows/.github/workflows/llm-doc-update.yml@<sha> # v10.0.1
+    uses: DCC-BS/ci-workflows/.github/workflows/llm-doc-update.yml@<sha> # v10.0.2
     with:
       doc_repo: "DCC-BS/documentation"
       doc_path: "docs/relevant-section"
@@ -232,7 +232,7 @@ on:
 
 jobs:
   docs:
-    uses: DCC-BS/ci-workflows/.github/workflows/llm-doc-update-conditional.yml@<sha> # v10.0.1
+    uses: DCC-BS/ci-workflows/.github/workflows/llm-doc-update-conditional.yml@<sha> # v10.0.2
     with:
       doc_repo: "DCC-BS/documentation"
       doc_path: "docs/relevant-section"

@@ -53,7 +53,7 @@ jobs:
             # Same toolchain as CI and local dev: bun/node come from the repo's mise.toml, so the
             # published build never uses a different ("latest") version than the one that was tested.
             - name: Setup mise
-              uses: DCC-BS/ci-workflows/actions/setup-mise@fcce3b36d909da311c9125632fb37be6a82e783e # v10.0.1
+              uses: DCC-BS/ci-workflows/actions/setup-mise@57e1c4a7fccd5cb956392fe0964193a645baa099 # v10.0.2
 
             - name: Apply version overrides
               if: ${{ inputs.node_version != '' || inputs.bun_version != '' }}
