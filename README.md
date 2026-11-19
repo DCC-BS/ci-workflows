@@ -22,7 +22,7 @@ its own `mise.toml`. Releases are tagged `vX.Y.Z` (latest: **v10.0.4**).
   - `bump-version/` — Composite action to bump `package.json`/`pyproject.toml` semver, commit, tag, and push.
 - `.github/workflows/`
   - `ci.yml` — **The unified, language-agnostic CI pipeline** (recommended for all projects).
-  - `publish-docker.yml` — Reusable Docker publish workflow for GHCR (calls `bump-version`).
+  - `publish-docker.yml` — Reusable Docker publish workflow for GHCR (calls `bump-version`). Images it pushes carry an SPDX SBOM attestation.
   - `npm-publish.yml` — Reusable workflow to build and publish npm packages (toolchain from mise.toml).
   - `llm-doc-update.yml` — Reusable workflow that drafts documentation updates from a PR diff using an LLM.
   - `llm-doc-update-conditional.yml` — Wrapper that runs `llm-doc-update.yml` when a PR is commented with `/documentation`.
