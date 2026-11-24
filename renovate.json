@@ -2,5 +2,16 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended"
+  ],
+  "minimumReleaseAge": "7 days",
+  "internalChecksFilter": "strict",
+  "packageRules": [
+    {
+      "description": "Our own reusable workflows and actions are first-party, so they skip the supply-chain cooldown",
+      "matchPackageNames": [
+        "DCC-BS/ci-workflows"
+      ],
+      "minimumReleaseAge": null
+    }
   ]
 }
